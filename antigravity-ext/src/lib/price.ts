@@ -1,6 +1,7 @@
-import { saveAssetPrice } from './portfolio';
+import { saveAssetPrice, saveQuoteSnapshot } from './portfolio';
 import { loadState, saveState } from './storage';
 import type { MarketContext } from '../types';
+import type { QuoteSnapshot } from '../types/market';
 import { evaluateTriggers } from './trigger';
 import { dispatchNotifications } from './notifications';
 
@@ -54,6 +55,17 @@ export async function saveMarketContextFromSnapshot(
     lastApiSyncedAt
   };
   await saveState(state);
+}
+
+/**
+ * QuoteSnapshot[] を一括保存してトリガー再評価する。
+ * snapshotAdapter からの自動取得フローで使用。
+ */
+export async function applyQuoteSnapshots(quotes: QuoteSnapshot[]): Promise<void> {
+  for (const quote of quotes) {
+    await saveQuoteSnapshot(quote);
+  }
+  await evaluateAndSaveTriggers();
 }
 
 export async function saveBatchPrices(updates: { assetId: string, price: number }[], marketDataAt?: string) {

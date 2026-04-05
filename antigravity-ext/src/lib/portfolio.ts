@@ -1,8 +1,11 @@
 import { loadState, saveState } from './storage';
 import type { Asset, Transaction, AssetPriceState } from '../types';
+import type { QuoteSnapshot } from '../types/market';
 import { replayTransactions } from './transaction';
 import { initialData } from './initialData';
 import { computeIsStale } from './priceHelpers';
+import { quoteKindToLegacyPriceKind } from './snapshotAdapter';
+import { evaluateFreshness } from './freshness';
 
 export async function getTransactions(): Promise<Transaction[]> {
   const state = await loadState();
@@ -206,4 +209,36 @@ export async function saveAssetPrice(
 export async function getAssetPriceState(): Promise<Record<string, AssetPriceState>> {
   const state = await loadState();
   return state.priceState || {};
+}
+
+/**
+ * QuoteSnapshot を priceState に保存する。
+ * snapshotAdapter → applyQuoteSnapshots() → ここ の順で呼ばれる。
+ * isStale は FreshnessEngine で動的計算する (ハードコードしない)。
+ */
+export async function saveQuoteSnapshot(quote: QuoteSnapshot): Promise<void> {
+  const state = await loadState();
+  if (!state.priceState) state.priceState = {};
+
+  const existing = state.priceState[quote.assetId];
+  const legacyPriceKind = quoteKindToLegacyPriceKind(quote.quoteKind);
+  const freshnessView = evaluateFreshness({ quote });
+
+  state.priceState[quote.assetId] = {
+    ...existing,
+    assetId:          quote.assetId,
+    price:            quote.value,
+    displayPrice:     quote.value,
+    priceKind:        legacyPriceKind as AssetPriceState['priceKind'],
+    priceSource:      'batch',
+    source:           'batch',
+    updatedAt:        Date.now(),
+    lastApiSyncedAt:  new Date(quote.syncedAt).getTime(),
+    marketDataAt:     quote.marketDataAt ?? undefined,
+    baselineDate:     quote.baselineDate,
+    isStale:          freshnessView.isStale,
+  };
+
+  await saveState(state);
+  await rebuildAsset(quote.assetId);
 }

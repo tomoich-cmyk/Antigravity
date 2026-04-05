@@ -2,29 +2,30 @@ import { loadState, saveState } from './storage';
 import { evaluateTriggers } from './trigger';
 import { dispatchNotifications } from './notifications';
 import { generateSummary } from './summary';
-import { updateAssetPricesAndEvaluate } from './price';
+import { applyQuoteSnapshots } from './price';
 import { saveMarketContext } from './marketContext';
-import {
-  fetchMarketSnapshot,
-  extractPricesFromSnapshot,
-  extractContextFromSnapshot,
-} from './snapshotFetcher';
+import { fetchMarketSnapshot, extractContextFromSnapshot } from './snapshotFetcher';
+import { snapshotToQuoteSnapshots, isSnapshotStale } from './snapshotAdapter';
 
 /**
- * スナップショットを取得して AppState に反映する
+ * スナップショットを取得して AppState に反映する。
+ * - 株価: snapshotAdapter → QuoteSnapshot[] → applyQuoteSnapshots()
+ * - 市況: extractContextFromSnapshot → saveMarketContext()
  * 失敗しても例外を投げない（手動更新にフォールバック）
  */
 async function applySnapshot(): Promise<void> {
   const snapshot = await fetchMarketSnapshot();
-  if (!snapshot) return; // 取得失敗 → 何もしない
+  if (!snapshot) return;
 
-  // 株価を反映 (marketDataAt / priceKind も一緒に転送)
-  const priceUpdates = extractPricesFromSnapshot(snapshot);
-  if (priceUpdates.length > 0) {
-    await updateAssetPricesAndEvaluate(priceUpdates);
-    console.log(
-      `[snapshot] applied ${priceUpdates.length} price(s) from ${snapshot.fetchedAt}`
-    );
+  if (isSnapshotStale(snapshot)) {
+    console.warn('[snapshot] server returned stale snapshot — applying anyway');
+  }
+
+  // 株価を QuoteSnapshot 形式で反映
+  const quotes = snapshotToQuoteSnapshots(snapshot, new Date());
+  if (quotes.length > 0) {
+    await applyQuoteSnapshots(quotes);
+    console.log(`[snapshot] applied ${quotes.length} quote(s) from ${snapshot.fetchedAt}`);
   }
 
   // 市況コンテキストを反映
