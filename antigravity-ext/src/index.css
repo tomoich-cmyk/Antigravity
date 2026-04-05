@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-main: #020617; /* slate-950 */
+    --bg-card: #0f172a; /* slate-900 */
+    --text-main: #f1f5f9; /* slate-100 */
+    --text-muted: #94a3b8; /* slate-400 */
+    --border-main: #1e293b; /* slate-800 */
+    --bg-sidebar: #020617; /* slate-950 */
+  }
+
+  body {
+    @apply m-0 min-w-[400px] min-h-[500px] transition-colors duration-300;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+  }
+}
+
+/* Custom Utilities for Premium Look */
+@layer utilities {
+  .glass-card {
+    @apply backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border border-white/20 dark:border-white/10 shadow-xl;
+  }
+}

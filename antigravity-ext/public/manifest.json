@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Antigravity",
+  "version": "1.0.0",
+  "description": "Local investment decision support app",
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": "logo.png"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "icons": {
+    "128": "logo.png"
+  },
+  "options_page": "index.html",
+  "host_permissions": [
+    "*://localhost/*",
+    "http://127.0.0.1/*"
+  ]
+}
