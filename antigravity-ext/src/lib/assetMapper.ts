@@ -1,12 +1,35 @@
 import type { Asset, AppState } from '../types';
-import type { AssetCardViewModel, AssetPriceMeta, PriceSource as ViewPriceSource } from '../types/viewModels';
+import type { AssetCardViewModel, AssetPriceMeta, PriceSource as ViewPriceSource, PriceKind } from '../types/viewModels';
+import type { QuoteSnapshot, AssetClass, QuoteKind } from '../types/market';
 import { calculateMarketScore } from './marketScore';
 import { buildDynamicWatchZone } from './watchZone';
 import { evaluateFinalDecision } from './decision';
-import { computeIsStale } from './priceHelpers';
+import { evaluateFreshness } from './freshness';
+import { deriveBaselineDate } from './baselineDate';
 import { LABELS } from '../constants/labels';
 import { MESSAGES } from '../constants/messages';
 import { DECISION_LABEL_MAP, ENVIRONMENT_LABEL_MAP } from '../constants/enums';
+
+// ─── 型マッピングヘルパー ─────────────────────────────────────────────────────
+
+function toAssetClass(type: 'stock' | 'fund'): AssetClass {
+  return type === 'fund' ? 'mutual_fund' : 'jp_stock';
+}
+
+function toQuoteKind(priceKind: PriceKind): QuoteKind {
+  if (priceKind === 'official') return 'nav';
+  if (priceKind === 'reference') return 'reference';
+  if (priceKind === 'close') return 'close';
+  // 'market' | 'snapshot' → intraday
+  return 'intraday';
+}
+
+function toSourceId(source: ViewPriceSource): QuoteSnapshot['source'] {
+  if (source === 'api' || source === 'batch') {
+    return { id: 'snapshot_server', mode: 'delayed', label: '自動取得' };
+  }
+  return { id: 'manual', mode: 'manual', label: '手動' };
+}
 
 export function toAssetCardViewModel(
   asset: Asset,
@@ -69,43 +92,64 @@ export function toAssetCardViewModel(
     diffColor = primaryRule.direction === 'sell' ? "text-rose-400" : "text-indigo-400";
   }
 
-  // 6. 鮮度判定 (J-Quants / Yahoo ハイブリッド対応)
+  // 6. 鮮度判定 (FreshnessEngine)
   const rawSource = priceState?.priceSource as string;
   let priceSource: ViewPriceSource = "manual";
   if (rawSource === 'api') priceSource = "api";
+  else if (rawSource === 'batch') priceSource = "batch";
   else if (rawSource === 'preview') priceSource = "preview";
   else if (rawSource === 'fallback') priceSource = "fallback";
 
-  let priceKind = (priceState?.priceKind as any) || (asset.type === 'fund' ? "official" : "market");
-  
-  // 国内株式の「前回取得値」判定
+  let priceKind: PriceKind = (priceState?.priceKind as PriceKind) || (asset.type === 'fund' ? "official" : "market");
+
+  // 国内株式の「前回取得値」判定 (legacy priceKind 補正)
   if (asset.type === 'stock' && priceState?.marketDataAt && priceSource === 'api') {
-      const md = new Date(priceState.marketDataAt);
-      const now = new Date();
-      const isSameDay = md.getFullYear() === now.getFullYear() && 
-                        md.getMonth() === now.getMonth() && 
-                        md.getDate() === now.getDate();
-      
-      if (!isSameDay) {
-          priceKind = 'snapshot'; // 前回取得値
-      }
+    const md = new Date(priceState.marketDataAt);
+    const now = new Date();
+    const isSameDay = md.getFullYear() === now.getFullYear() &&
+                      md.getMonth()    === now.getMonth() &&
+                      md.getDate()     === now.getDate();
+    if (!isSameDay) priceKind = 'snapshot';
   }
+
+  const syncedAt = priceState?.lastApiSyncedAt
+    ? new Date(priceState.lastApiSyncedAt).toISOString()
+    : undefined;
 
   const meta: AssetPriceMeta = {
     priceSource,
     priceKind,
-    syncedAt: priceState?.lastApiSyncedAt ? new Date(priceState.lastApiSyncedAt).toISOString() : undefined,
+    syncedAt,
     marketDataAt: priceState?.marketDataAt,
     baselineDate: priceState?.baselineDate,
   };
-  
-  meta.isStale = computeIsStale({
-    assetClass: asset.type === 'stock' ? 'stock' : 'fund',
-    priceKind: meta.priceKind,
-    syncedAt: meta.syncedAt,
+
+  // QuoteSnapshot を組み立てて FreshnessEngine で評価
+  const now = new Date();
+  const assetClass = toAssetClass(asset.type);
+  const quoteKind  = toQuoteKind(priceKind);
+  const resolvedBaseline = meta.baselineDate ?? deriveBaselineDate({
+    assetClass,
+    quoteKind,
     marketDataAt: meta.marketDataAt,
-    baselineDate: meta.baselineDate
+    now,
   });
+
+  const quote: QuoteSnapshot = {
+    assetId:      asset.id,
+    assetClass,
+    value:        displayPrice,
+    currency:     'JPY',
+    quoteKind,
+    source:       toSourceId(priceSource),
+    syncedAt:     syncedAt ?? now.toISOString(),
+    marketDataAt: meta.marketDataAt ?? null,
+    baselineDate: resolvedBaseline,
+  };
+
+  const freshnessView = evaluateFreshness({ quote, now });
+  meta.isStale      = freshnessView.isStale;
+  meta.freshnessView = freshnessView;
 
   return {
     id: asset.id,

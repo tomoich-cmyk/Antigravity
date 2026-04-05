@@ -1,3 +1,5 @@
+import type { FreshnessView } from './market';
+
 export type PriceSource = "manual" | "api" | "preview" | "fallback" | "batch" | "derived" | "auto";
 export type PriceKind = "market" | "official" | "reference" | "snapshot" | "close";
 
@@ -7,7 +9,8 @@ export type AssetPriceMeta = {
   syncedAt?: string;       // アプリへ保存した時刻 ISO string
   marketDataAt?: string;   // 市場データ自体の時刻 ISO string
   baselineDate?: string;   // 投信用: 基準日 (YYYY-MM-DD)
-  isStale?: boolean;       // stale 判定済みフラグ
+  isStale?: boolean;       // stale 判定済みフラグ (FreshnessEngine から導出)
+  freshnessView?: FreshnessView; // 鮮度詳細 (asOfLabel / level / canPretendCurrent 等)
 };
 
 export type AssetCardViewModel = {
