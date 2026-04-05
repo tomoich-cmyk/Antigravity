@@ -43,9 +43,11 @@ function buildCandidateLines(
       const price = ps?.displayPrice || asset.currentPrice;
       if (price >= nextSell) {
         if (!includedAssets.includes(asset.id)) includedAssets.push(asset.id);
+        candidatesCount++;
         lines.push(`- ${asset.name}: 売却候補帯到達 (${price.toLocaleString()} >= ${nextSell.toLocaleString()})`);
       } else if (nextSell - price <= 200) {
         if (!includedAssets.includes(asset.id)) includedAssets.push(asset.id);
+        candidatesCount++;
         lines.push(`- ${asset.name}: 売却候補帯まであと ${(nextSell - price).toLocaleString()}円`);
       }
     }
