@@ -103,6 +103,11 @@ export interface FreshnessView {
    */
   asOfLabel: string;
   /**
+   * 価格種別の短いラベル (例: "現在値", "終値", "基準価額", "参考", "取得値")
+   * AssetCard の価格下に表示する
+   */
+  priceLabel: string;
+  /**
    * true の場合「現在値」と表記してよい
    * (場中 intraday かつ 20分以内)
    */

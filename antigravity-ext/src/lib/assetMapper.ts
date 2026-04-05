@@ -148,8 +148,9 @@ export function toAssetCardViewModel(
   };
 
   const freshnessView = evaluateFreshness({ quote, now });
-  meta.isStale      = freshnessView.isStale;
+  meta.isStale       = freshnessView.isStale;
   meta.freshnessView = freshnessView;
+  meta.quoteKind     = quoteKind;
 
   return {
     id: asset.id,

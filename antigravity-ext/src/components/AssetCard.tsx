@@ -1,6 +1,6 @@
 import React from 'react';
 import type { AssetCardViewModel } from '../types/viewModels';
-import type { FreshnessLevel } from '../types/market';
+import type { FreshnessLevel, QuoteKind } from '../types/market';
 import {
   formatYen,
   formatSignedYen,
@@ -9,6 +9,21 @@ import {
 } from '../lib/priceHelpers';
 import { LABELS } from '../constants/labels';
 
+/** quoteKind + canPretendCurrent → 価格種別ラベル */
+function resolvePriceTypeLabel(
+  quoteKind: QuoteKind | undefined,
+  canPretendCurrent: boolean,
+  fallbackPriceKind: string,
+): string {
+  if (canPretendCurrent) return '現在値';
+  if (quoteKind === 'close')     return '終値';
+  if (quoteKind === 'nav')       return '基準価額';
+  if (quoteKind === 'reference') return '参考価格';
+  if (quoteKind === 'intraday')  return '取得値';
+  // quoteKind 未設定のとき legacy fallback
+  return PRICE_KIND_LABEL[fallbackPriceKind as keyof typeof PRICE_KIND_LABEL] ?? '—';
+}
+
 interface Props {
   vm: AssetCardViewModel;
 }
@@ -16,10 +31,12 @@ interface Props {
 export const AssetCard: React.FC<Props> = ({ vm }) => {
   const fv = vm.priceMeta.freshnessView;
 
-  // 価格ラベル: canPretendCurrent → "現在値", それ以外は priceKind ベース
-  const priceTypeLabel = fv?.canPretendCurrent
-    ? '現在値'
-    : PRICE_KIND_LABEL[vm.priceMeta.priceKind];
+  // 価格ラベル: FreshnessView.priceLabel が最優先、なければ quoteKind ベースで決定
+  const priceTypeLabel = fv?.priceLabel ?? resolvePriceTypeLabel(
+    vm.priceMeta.quoteKind,
+    fv?.canPretendCurrent ?? false,
+    vm.priceMeta.priceKind,
+  );
 
   // メタ情報行: asOfLabel (鮮度エンジン由来) + 更新時刻
   const asOfLine    = fv?.asOfLabel;

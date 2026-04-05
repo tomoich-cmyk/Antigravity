@@ -35,8 +35,16 @@ function makeView(
   canPretendCurrent: boolean,
   reason?: FreshnessReason,
   message?: string,
+  priceLabel?: string,
 ): FreshnessView {
-  return { isStale, level, asOfLabel, canPretendCurrent, reason, message };
+  // priceLabel 省略時は asOfLabel の末尾キーワードから推定
+  const resolvedLabel = priceLabel ?? (
+    asOfLabel.includes('基準価額') ? '基準価額' :
+    asOfLabel.includes('終値')    ? '終値'    :
+    asOfLabel.includes('参考')    ? '参考'    :
+    canPretendCurrent             ? '現在値'  : '取得値'
+  );
+  return { isStale, level, asOfLabel, priceLabel: resolvedLabel, canPretendCurrent, reason, message };
 }
 
 // ─── intraday 評価 ────────────────────────────────────────────────────────────

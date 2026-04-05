@@ -1,4 +1,4 @@
-import type { FreshnessView } from './market';
+import type { FreshnessView, QuoteKind } from './market';
 
 export type PriceSource = "manual" | "api" | "preview" | "fallback" | "batch" | "derived" | "auto";
 export type PriceKind = "market" | "official" | "reference" | "snapshot" | "close";
@@ -6,6 +6,8 @@ export type PriceKind = "market" | "official" | "reference" | "snapshot" | "clos
 export type AssetPriceMeta = {
   priceSource: PriceSource;
   priceKind: PriceKind;
+  /** FreshnessEngine が使う正規の価格種別 */
+  quoteKind?: QuoteKind;
   syncedAt?: string;       // アプリへ保存した時刻 ISO string
   marketDataAt?: string;   // 市場データ自体の時刻 ISO string
   baselineDate?: string;   // 投信用: 基準日 (YYYY-MM-DD)
