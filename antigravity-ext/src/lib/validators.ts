@@ -7,14 +7,12 @@ export function validateTransactionInput(input: Partial<Transaction>): { valid: 
   if (!input.type) errors.type = "取引種別を選択してください";
   if (!input.date) errors.date = "日付を入力してください";
   
-  if (input.type !== 'adjustment') {
+  if (input.type !== 'adjustment' && input.type !== 'distribution') {
       if (input.quantity === undefined || input.quantity <= 0) {
         errors.quantity = "数量は1以上を入力してください";
       }
-      if (input.type !== 'distribution') {
-        if (input.price === undefined || input.price <= 0) {
-            errors.price = "価格は0より大きい値を入力してください";
-        }
+      if (input.price === undefined || input.price <= 0) {
+          errors.price = "価格は0より大きい値を入力してください";
       }
   }
 
