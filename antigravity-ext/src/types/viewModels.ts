@@ -1,4 +1,4 @@
-export type PriceSource = "manual" | "api" | "preview" | "fallback";
+export type PriceSource = "manual" | "api" | "preview" | "fallback" | "batch" | "derived" | "auto";
 export type PriceKind = "market" | "official" | "reference" | "snapshot" | "close";
 
 export type AssetPriceMeta = {

@@ -5,6 +5,9 @@ export const PRICE_SOURCE_LABEL: Record<PriceSource, string> = {
   api: "同期済",
   preview: "確認前",
   fallback: "代替値",
+  batch: "自動取得",
+  derived: "派生値",
+  auto: "自動",
 };
 
 export const PRICE_KIND_LABEL: Record<PriceKind, string> = {

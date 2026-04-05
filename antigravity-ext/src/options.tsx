@@ -173,10 +173,8 @@ function OptionsPage() {
     showToast("データを書き出しました");
   };
 
-  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false)
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
-
    const handleImport = () => {
+    if (!window.confirm("現在のデータはすべて上書きされます。\n事前にバックアップを取ってから続行することを推奨します。\n\nよろしいですか？")) return;
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json,application/json';
@@ -725,6 +723,7 @@ function OptionsPage() {
                         state.summaryNotifications.slice().reverse().map(n => {
                            const isMidday = n.type === 'midday' || n.subject.includes('前場');
                            const isClose = n.type === 'close' || n.subject.includes('大引け');
+                           const isNight = n.type === 'night' || n.subject.includes('夜');
                            return (
                              <div key={n.id} className="border border-[var(--border-main)] rounded-2xl py-3 px-4 relative group bg-[var(--bg-main)]/30">
                                 <div className="flex justify-between items-start mb-1">
@@ -732,11 +731,12 @@ function OptionsPage() {
                                       <div className="flex items-center gap-2 mb-2">
                                          <div className="text-[10px] text-[var(--text-muted)] font-black uppercase tracking-widest">{new Date(n.generatedAt).toLocaleString()}</div>
                                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter ${
-                                           isMidday ? 'bg-blue-500/10 text-blue-500' : 
-                                           isClose ? 'bg-purple-500/10 text-purple-500' : 
+                                           isMidday ? 'bg-blue-500/10 text-blue-500' :
+                                           isClose ? 'bg-purple-500/10 text-purple-500' :
+                                           isNight ? 'bg-indigo-500/10 text-indigo-400' :
                                            'bg-gray-500/10 text-gray-500'
                                          }`}>
-                                           {isMidday ? '前場' : isClose ? '大引け' : n.type}
+                                           {isMidday ? '前場' : isClose ? '大引け' : isNight ? '夜' : n.type}
                                          </span>
                                       </div>
                                       <div className="font-black text-[var(--text-main)] text-[15px]">{n.subject}</div>

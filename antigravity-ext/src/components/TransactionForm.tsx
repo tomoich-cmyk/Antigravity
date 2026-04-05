@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Asset, Transaction, TransactionType, TransactionStatus } from '../types';
 import { appendTransaction, updateTransaction } from '../lib/portfolio';
+import { validateTransactionInput } from '../lib/validators';
 import { LABELS } from '../constants/labels';
 
 interface Props {
@@ -25,11 +26,12 @@ export const TransactionForm: React.FC<Props> = ({ assets, initialAssetId, initi
   const [specialDist, setSpecialDist] = useState(existingTransaction?.distributionBreakdown?.special?.toString() || '');
 
   const [showDetailed, setShowDetailed] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const selectedAsset = assets.find(a => a.id === assetId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const qtyNum = parseFloat(quantity);
     const priceNum = parseFloat(price);
     const feeNum = fee ? parseFloat(fee) : 0;
@@ -56,6 +58,14 @@ export const TransactionForm: React.FC<Props> = ({ assets, initialAssetId, initi
     if (type === 'distribution') {
         txBase.distributionBreakdown = { ordinary: ordDistNum, special: specDistNum };
     }
+
+    // バリデーション
+    const validation = validateTransactionInput(txBase);
+    if (!validation.valid) {
+      setFormErrors(validation.errors);
+      return;
+    }
+    setFormErrors({});
 
     if (existingTransaction && existingTransaction.id) {
       await updateTransaction(txBase);
@@ -180,6 +190,15 @@ export const TransactionForm: React.FC<Props> = ({ assets, initialAssetId, initi
           </div>
         )}
 
+        {/* Validation Errors */}
+        {Object.keys(formErrors).length > 0 && (
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 px-4 py-3 space-y-1">
+            {Object.values(formErrors).map((msg, i) => (
+              <p key={i} className="text-[11px] font-bold text-rose-500">{msg}</p>
+            ))}
+          </div>
+        )}
+
         {/* Detailed Fields (Toggle) */}
         <div className="pt-2">
           {!showDetailed ? (
@@ -222,11 +241,11 @@ export const TransactionForm: React.FC<Props> = ({ assets, initialAssetId, initi
                     value={note} onChange={e => setNote(e.target.value)} placeholder="取引の理由など" 
                   />
                 </div>
-                {(selectedAsset?.type === 'fund' && type !== 'adjustment' && type !== 'distribution') && (
+                {(type !== 'adjustment' && type !== 'distribution') && (
                   <div>
                     <label className="block text-[var(--text-muted)] font-black text-[10px] uppercase tracking-widest mb-1.5 ml-1">{LABELS.asset.status}</label>
-                    <select 
-                      className="flex h-11 w-full rounded-xl border border-[var(--border-main)] bg-[var(--bg-main)] px-4 py-2 text-sm text-[var(--text-main)] font-bold appearance-none cursor-pointer" 
+                    <select
+                      className="flex h-11 w-full rounded-xl border border-[var(--border-main)] bg-[var(--bg-main)] px-4 py-2 text-sm text-[var(--text-main)] font-bold appearance-none cursor-pointer"
                       value={status} onChange={e => setStatus(e.target.value as TransactionStatus)}
                     >
                       <option value="planned" className="bg-[var(--bg-card)]">{LABELS.transaction.planned}</option>

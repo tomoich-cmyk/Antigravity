@@ -145,6 +145,10 @@ export async function softDeleteTransaction(txId: string): Promise<void> {
   const state = await loadState();
   const tx = state.transactions.find(t => t.id === txId);
   if (tx) {
+    // confirmed 取引を削除する場合は現金への影響を取り消す
+    if (tx.status === 'confirmed') {
+      await updateCashFromTransaction(tx, state, true);
+    }
     tx.isDeleted = true;
     await saveState(state);
     await rebuildAsset(tx.assetId);
