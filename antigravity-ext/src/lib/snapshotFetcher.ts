@@ -66,37 +66,6 @@ export function getCachedSnapshot(): MarketSnapshot | null {
 }
 
 /**
- * スナップショットを AppState に反映するための価格マッピング
- * assetId → snapshot の価格を返す
- */
-export function extractPricesFromSnapshot(
-  snapshot: MarketSnapshot
-): Array<{ assetId: string; price: number; source: 'batch'; marketDataAt?: string; baselineDate?: string; priceKind?: 'market' | 'close' | 'official' | 'reference' }> {
-  const updates: Array<{ assetId: string; price: number; source: 'batch'; marketDataAt?: string; baselineDate?: string; priceKind?: 'market' | 'close' | 'official' | 'reference' }> = [];
-
-  if (snapshot.stocks.gmopg?.price) {
-    updates.push({
-      assetId: 'asset-gmopg',
-      price: snapshot.stocks.gmopg.price,
-      source: 'batch',
-      marketDataAt: snapshot.stocks.gmopg.marketDataAt,
-      priceKind: snapshot.stocks.gmopg.priceKind as 'market' | 'close' | 'official' | 'reference' | undefined,
-    });
-  }
-  if (snapshot.stocks.unext?.price) {
-    updates.push({
-      assetId: 'asset-unext',
-      price: snapshot.stocks.unext.price,
-      source: 'batch',
-      marketDataAt: snapshot.stocks.unext.marketDataAt,
-      priceKind: snapshot.stocks.unext.priceKind as 'market' | 'close' | 'official' | 'reference' | undefined,
-    });
-  }
-
-  return updates;
-}
-
-/**
  * スナップショットから MarketContext 用データを抽出
  */
 export function extractContextFromSnapshot(
