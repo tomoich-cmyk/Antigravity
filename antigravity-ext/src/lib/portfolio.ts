@@ -2,6 +2,7 @@ import { loadState, saveState } from './storage';
 import type { Asset, Transaction, AssetPriceState } from '../types';
 import { replayTransactions } from './transaction';
 import { initialData } from './initialData';
+import { computeIsStale } from './priceHelpers';
 
 export async function getTransactions(): Promise<Transaction[]> {
   const state = await loadState();
@@ -171,6 +172,17 @@ export async function saveAssetPrice(
   const existing = state.priceState[assetId];
   const newKind = priceKind || (existing?.priceKind === 'official' || existing?.priceKind === 'reference' ? existing.priceKind : 'market');
   
+  const asset = state.assets.find((a: any) => a.id === assetId);
+  const assetClass = asset?.type === 'stock' ? 'stock' : 'fund';
+  const syncedIso = new Date(lastApiSyncedAt || Date.now()).toISOString();
+  const isStale = computeIsStale({
+    assetClass,
+    priceKind: newKind as any,
+    syncedAt: syncedIso,
+    marketDataAt,
+    baselineDate,
+  });
+
   state.priceState[assetId] = {
     ...existing,
     assetId,
@@ -184,7 +196,7 @@ export async function saveAssetPrice(
     snapshotTimestamp,
     marketDataAt,
     baselineDate,
-    isStale: false,
+    isStale,
   };
   
   await saveState(state);

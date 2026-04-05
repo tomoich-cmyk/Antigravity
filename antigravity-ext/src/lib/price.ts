@@ -17,13 +17,13 @@ export async function evaluateAndSaveTriggers() {
   }
 }
 
-export async function updateAssetPricesAndEvaluate(updates: { assetId: string, price: number, priceSource?: 'manual' | 'batch' }[]) {
+export async function updateAssetPricesAndEvaluate(updates: { assetId: string, price: number, priceSource?: 'manual' | 'batch'; marketDataAt?: string; baselineDate?: string; priceKind?: 'market' | 'close' | 'official' | 'reference' }[]) {
   // 1. Save all prices (legacy compatible)
-  for (const { assetId, price, priceSource } of updates) {
-    await saveAssetPrice(assetId, price, priceSource || 'manual');
+  for (const { assetId, price, priceSource, marketDataAt, baselineDate, priceKind } of updates) {
+    await saveAssetPrice(assetId, price, priceSource || 'manual', Date.now(), undefined, priceKind, marketDataAt, baselineDate);
   }
-  
-// 2. Evaluate triggers
+
+  // 2. Evaluate triggers
   await evaluateAndSaveTriggers();
 }
 

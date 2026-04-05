@@ -18,7 +18,7 @@ async function applySnapshot(): Promise<void> {
   const snapshot = await fetchMarketSnapshot();
   if (!snapshot) return; // 取得失敗 → 何もしない
 
-  // 株価を反映
+  // 株価を反映 (marketDataAt / priceKind も一緒に転送)
   const priceUpdates = extractPricesFromSnapshot(snapshot);
   if (priceUpdates.length > 0) {
     await updateAssetPricesAndEvaluate(priceUpdates);
