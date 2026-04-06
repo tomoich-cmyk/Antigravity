@@ -18,6 +18,12 @@
  * 11. [nav]      4 営業日前基準価額 → stale
  * 12. [reference] 前営業日参考価格 → lagging (未確定)
  * 13. [reference] 3 営業日前参考価格 → stale
+ *
+ * 場中シナリオ (priceLabel 検証):
+ * 14. [intraday] 場中: marketDataAt=10分前 → fresh, canPretendCurrent=true, priceLabel="現在値"
+ * 15. [intraday] 場中: marketDataAt=40分前 → lagging, canPretendCurrent=false, priceLabel≠"現在値"
+ * 16. [close]    当日終値 → canPretendCurrent=false, priceLabel="終値"
+ * 17. [nav]      前営業日基準価額 → canPretendCurrent=false, priceLabel="基準価額"
  */
 
 import { describe, it, expect } from 'vitest';
@@ -248,6 +254,72 @@ describe('evaluateFreshness — reference (mutual_fund)', () => {
     const result = evaluateFreshness({ quote, now });
     expect(result.isStale).toBe(true);
     expect(result.level).toBe('stale');
+  });
+
+});
+
+// ─── 場中シナリオ: priceLabel / canPretendCurrent の詳細検証 ─────────────────
+
+describe('evaluateFreshness — 場中シナリオ (priceLabel 検証)', () => {
+
+  it('14. [intraday] 場中: marketDataAt=10分前 → fresh, canPretendCurrent=true, priceLabel="現在値"', () => {
+    // 現在: 2025-04-04 (金) 10:00 JST (前場)
+    const now = jst('2025-04-04 10:00');
+    const marketDataAt = jst('2025-04-04 09:50').toISOString(); // 10分前
+    const quote = makeQuote({
+      quoteKind: 'intraday',
+      baselineDate: '2025-04-04',
+      marketDataAt,
+      syncedAt: jst('2025-04-04 09:58').toISOString(),
+    });
+    const result = evaluateFreshness({ quote, now });
+    expect(result.level).toBe('fresh');
+    expect(result.canPretendCurrent).toBe(true);
+    expect(result.priceLabel).toBe('現在値');
+    expect(result.isStale).toBe(false);
+  });
+
+  it('15. [intraday] 場中: marketDataAt=40分前 → lagging, canPretendCurrent=false, priceLabel≠"現在値"', () => {
+    // 現在: 2025-04-04 (金) 10:40 JST (前場)
+    const now = jst('2025-04-04 10:40');
+    const marketDataAt = jst('2025-04-04 10:00').toISOString(); // 40分前
+    const quote = makeQuote({
+      quoteKind: 'intraday',
+      baselineDate: '2025-04-04',
+      marketDataAt,
+      syncedAt: jst('2025-04-04 10:00').toISOString(),
+    });
+    const result = evaluateFreshness({ quote, now });
+    expect(result.level).toBe('lagging');
+    expect(result.canPretendCurrent).toBe(false);
+    expect(result.priceLabel).not.toBe('現在値');
+    expect(result.isStale).toBe(false);
+  });
+
+  it('16. [close] 当日終値 → canPretendCurrent=false, priceLabel="終値"', () => {
+    const now = jst('2025-04-04 16:00');
+    const quote = makeQuote({
+      quoteKind: 'close',
+      baselineDate: '2025-04-04',
+      assetClass: 'jp_stock',
+      syncedAt: jst('2025-04-04 15:35').toISOString(),
+    });
+    const result = evaluateFreshness({ quote, now });
+    expect(result.canPretendCurrent).toBe(false);
+    expect(result.priceLabel).toBe('終値');
+  });
+
+  it('17. [nav] 前営業日基準価額 → canPretendCurrent=false, priceLabel="基準価額"', () => {
+    const now = jst('2025-04-04 15:00');
+    const quote = makeQuote({
+      quoteKind: 'nav',
+      baselineDate: '2025-04-03',
+      assetClass: 'mutual_fund',
+      syncedAt: jst('2025-04-04 09:00').toISOString(),
+    });
+    const result = evaluateFreshness({ quote, now });
+    expect(result.canPretendCurrent).toBe(false);
+    expect(result.priceLabel).toBe('基準価額');
   });
 
 });
