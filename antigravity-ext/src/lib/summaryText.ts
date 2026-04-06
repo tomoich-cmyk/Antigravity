@@ -11,6 +11,7 @@
  */
 
 import { evaluateFreshness } from './freshness';
+import { logFreshnessAudit } from './freshnessAudit';
 import type { QuoteSnapshot } from '../types/market';
 
 // ─── buildQuoteSummaryLine ────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ export function buildQuoteSummaryLine(
 ): string {
   const now = new Date(nowIso);
   const fv = evaluateFreshness({ quote, now });
+  logFreshnessAudit(quote.assetId, quote.quoteKind, quote.baselineDate, quote.marketDataAt, fv);
   const price = quote.value.toLocaleString() + '円';
 
   let timeLabel: string;

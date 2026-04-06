@@ -6,6 +6,7 @@ import { buildDynamicWatchZone } from './watchZone';
 import { evaluateFinalDecision } from './decision';
 import { evaluateFreshness } from './freshness';
 import { deriveBaselineDate } from './baselineDate';
+import { logFreshnessAudit } from './freshnessAudit';
 import { LABELS } from '../constants/labels';
 import { MESSAGES } from '../constants/messages';
 import { DECISION_LABEL_MAP, ENVIRONMENT_LABEL_MAP } from '../constants/enums';
@@ -148,6 +149,7 @@ export function toAssetCardViewModel(
   };
 
   const freshnessView = evaluateFreshness({ quote, now });
+  logFreshnessAudit(asset.id, quoteKind, resolvedBaseline, meta.marketDataAt, freshnessView);
   meta.isStale       = freshnessView.isStale;
   meta.freshnessView = freshnessView;
   meta.quoteKind     = quoteKind;
