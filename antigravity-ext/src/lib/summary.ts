@@ -1,6 +1,50 @@
 import { loadState, saveState } from './storage';
 import type { Asset, SummaryNotification, TriggerRule, AssetPriceState, MarketContext } from '../types';
 import { calculateEntryScore } from './entryScore';
+import { evaluateFreshness } from './freshness';
+import { deriveBaselineDate } from './baselineDate';
+import type { QuoteKind, AssetClass } from '../types/market';
+
+/** 価格とその鮮度ラベルを "現在値 9,850" / "4/5 終値 4,210" 形式で返す */
+function buildPriceLabel(asset: Asset, ps: AssetPriceState | undefined): string {
+  if (!ps) return '';
+  const price = ps.displayPrice ?? ps.price;
+
+  // priceKind → quoteKind
+  const pk = ps.priceKind as string | undefined;
+  let quoteKind: QuoteKind;
+  if (pk === 'official') quoteKind = 'nav';
+  else if (pk === 'reference') quoteKind = 'reference';
+  else if (pk === 'close') quoteKind = 'close';
+  else quoteKind = 'intraday';
+
+  const assetClass: AssetClass = asset.type === 'fund' ? 'mutual_fund' : 'jp_stock';
+  const now = new Date();
+  const syncedAt = ps.lastApiSyncedAt
+    ? new Date(ps.lastApiSyncedAt).toISOString()
+    : now.toISOString();
+  const resolvedBaseline = ps.baselineDate ?? deriveBaselineDate({
+    assetClass, quoteKind, marketDataAt: ps.marketDataAt, now,
+  });
+
+  const fv = evaluateFreshness({
+    quote: {
+      assetId: asset.id,
+      assetClass,
+      value: price,
+      currency: 'JPY',
+      quoteKind,
+      source: { id: 'manual', mode: 'manual', label: '' },
+      syncedAt,
+      marketDataAt: ps.marketDataAt ?? null,
+      baselineDate: resolvedBaseline,
+    },
+    now,
+  });
+
+  const labelPart = fv.canPretendCurrent ? fv.priceLabel : fv.asOfLabel;
+  return `${labelPart} ${price.toLocaleString()}円`;
+}
 
 // ─── 共通: 買付候補・売却接近を全資産で評価 ───────────────────────────
 function buildCandidateLines(
@@ -21,34 +65,39 @@ function buildCandidateLines(
     const ps = priceState?.[asset.id];
     const score = calculateEntryScore(asset, rules, context, ps);
 
+    const price = ps?.displayPrice || asset.currentPrice;
+    const priceLabel = buildPriceLabel(asset, ps);
+
     if (score.flag === 'in_candidate') {
       candidatesCount++;
       includedAssets.push(asset.id);
       const buyRules = rules.filter(r => r.direction === 'buy').sort((a, b) => b.thresholdValue - a.thresholdValue);
       const nextBuy = buyRules[0]?.thresholdValue || 0;
-      const price = ps?.displayPrice || asset.currentPrice;
       const diff = Math.max(0, price - nextBuy);
-      lines.push(`- ${asset.name}: 次買付ラインまであと ${diff.toLocaleString()}円`);
+      const labelStr = priceLabel ? ` [${priceLabel}]` : '';
+      lines.push(`- ${asset.name}${labelStr}: 次買付ラインまであと ${diff.toLocaleString()}円`);
     } else {
       if (asset.type === 'fund' && score.reasons.some(r => r.includes('追い風'))) {
         candidatesCount++;
         includedAssets.push(asset.id);
-        lines.push(`- ${asset.name}: 参考価格ベースで追い風`);
+        const labelStr = priceLabel ? ` [${priceLabel}]` : '';
+        lines.push(`- ${asset.name}${labelStr}: 参考価格ベースで追い風`);
       }
     }
 
     const sellRules = rules.filter(r => r.direction === 'sell').sort((a, b) => a.thresholdValue - b.thresholdValue);
     if (sellRules.length > 0) {
       const nextSell = sellRules[0].thresholdValue;
-      const price = ps?.displayPrice || asset.currentPrice;
       if (price >= nextSell) {
         if (!includedAssets.includes(asset.id)) includedAssets.push(asset.id);
         candidatesCount++;
-        lines.push(`- ${asset.name}: 売却候補帯到達 (${price.toLocaleString()} >= ${nextSell.toLocaleString()})`);
+        const labelStr = priceLabel ? ` [${priceLabel}]` : '';
+        lines.push(`- ${asset.name}${labelStr}: 売却候補帯到達 (>= ${nextSell.toLocaleString()}円)`);
       } else if (nextSell - price <= 200) {
         if (!includedAssets.includes(asset.id)) includedAssets.push(asset.id);
         candidatesCount++;
-        lines.push(`- ${asset.name}: 売却候補帯まであと ${(nextSell - price).toLocaleString()}円`);
+        const labelStr = priceLabel ? ` [${priceLabel}]` : '';
+        lines.push(`- ${asset.name}${labelStr}: 売却候補帯まであと ${(nextSell - price).toLocaleString()}円`);
       }
     }
   }
@@ -130,7 +179,10 @@ export async function generateSummary(
       nightLines.push('\n【投信 含み損益】');
       for (const a of fundAssetsSummary) {
         const sign = a.unrealizedPnL >= 0 ? '+' : '';
-        nightLines.push(`- ${a.name}: ${sign}${a.unrealizedPnL.toLocaleString()}円`);
+        const ps = state.priceState?.[a.id];
+        const priceLabel = buildPriceLabel(a, ps);
+        const labelStr = priceLabel ? ` [${priceLabel}]` : '';
+        nightLines.push(`- ${a.name}${labelStr}: ${sign}${a.unrealizedPnL.toLocaleString()}円`);
       }
     }
 
