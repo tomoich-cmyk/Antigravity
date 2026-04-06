@@ -9,6 +9,7 @@ import { TransactionForm } from './components/TransactionForm'
 import { getSnapshotUrl, setSnapshotUrl } from './lib/snapshotFetcher'
 import { LABELS } from './constants/labels'
 import { calculateMarketScore } from './lib/marketScore'
+import { generateSummary } from './lib/summary'
 
 // 推奨値を返すヘルパー
 const getRecommendedMaxBuffer = (assetName: string): number => {
@@ -700,18 +701,33 @@ function OptionsPage() {
                 <div className="bg-[var(--bg-card)] rounded-2xl shadow-sm border border-[var(--border-main)] p-6">
                   <div className="flex justify-between items-center mb-4">
                      <h3 className="text-lg font-black text-[var(--text-main)] uppercase tracking-tight">生成済み要約ログ</h3>
-                     <button 
-                        onClick={async () => {
-                           if (!window.confirm("要約ログを消去しますか？\nこの操作は取り消せません")) return;
-                           const s = {...state, summaryNotifications: []};
-                           setState(s);
-                           await saveState(s);
-                           showToast("消去しました");
-                        }}
-                        className="text-[10px] font-black text-rose-500 px-4 py-1.5 bg-rose-500/5 hover:bg-rose-500/10 rounded-xl border border-rose-500/10 transition tracking-widest uppercase"
-                     >
-                       要約ログを消去
-                     </button>
+                     <div className="flex gap-2">
+                       <button
+                          onClick={async () => {
+                             const type = (['midday', 'close', 'night'] as const)[
+                               new Date().getHours() < 12 ? 0 : new Date().getHours() < 16 ? 1 : 2
+                             ];
+                             const notif = await generateSummary(type);
+                             setState(s => s ? { ...s, summaryNotifications: [...(s.summaryNotifications || []), notif] } : s);
+                             showToast(`${type === 'midday' ? '前場' : type === 'close' ? '大引け' : '夜'}サマリを生成しました`);
+                          }}
+                          className="text-[10px] font-black text-indigo-500 px-4 py-1.5 bg-indigo-500/5 hover:bg-indigo-500/10 rounded-xl border border-indigo-500/10 transition tracking-widest uppercase"
+                       >
+                         今すぐ生成
+                       </button>
+                       <button
+                          onClick={async () => {
+                             if (!window.confirm("要約ログを消去しますか？\nこの操作は取り消せません")) return;
+                             const s = {...state, summaryNotifications: []};
+                             setState(s);
+                             await saveState(s);
+                             showToast("消去しました");
+                          }}
+                          className="text-[10px] font-black text-rose-500 px-4 py-1.5 bg-rose-500/5 hover:bg-rose-500/10 rounded-xl border border-rose-500/10 transition tracking-widest uppercase"
+                       >
+                         要約ログを消去
+                       </button>
+                     </div>
                   </div>
                   <div className="space-y-4 max-h-[600px] overflow-y-auto pr-3 no-scrollbar">
                      {(!state.summaryNotifications || state.summaryNotifications.length === 0) ? (
