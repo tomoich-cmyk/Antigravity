@@ -15,6 +15,7 @@
  */
 
 import type { FreshnessView, QuoteKind } from '../types/market';
+import type { FetchErrorKind } from '../types/fetchStatus';
 
 /** Vitest 実行中か */
 const IS_VITEST =
@@ -53,4 +54,42 @@ export function logFreshnessAudit(
     `canPretendCurrent=${fv.canPretendCurrent}`,
     `priceLabel=${fv.priceLabel}`,
   );
+}
+
+/**
+ * fetch 試行結果を 1 行の debug ログとして出力する。
+ * Vitest 実行中はサイレント。
+ *
+ * 出力例 (失敗):
+ *   [fetch] source=snapshot_server status=failed errorKind=timeout fallbackUsed=true
+ * 出力例 (成功):
+ *   [fetch] source=snapshot_server status=success quotes=2 fallbackUsed=false
+ */
+export function logFetchAudit(params: {
+  status: 'success' | 'failed';
+  errorKind?: FetchErrorKind;
+  fallbackUsed: boolean;
+  quotesApplied?: number;
+  lastSuccessAt?: string;
+}): void {
+  if (IS_VITEST) return;
+
+  const parts: string[] = [
+    '[fetch]',
+    'source=snapshot_server',
+    `status=${params.status}`,
+  ];
+
+  if (params.status === 'failed') {
+    parts.push(`errorKind=${params.errorKind ?? 'unknown'}`);
+    if (params.lastSuccessAt) {
+      parts.push(`lastSuccessAt=${params.lastSuccessAt.slice(0, 16).replace('T', ' ')}`);
+    }
+  } else {
+    parts.push(`quotes=${params.quotesApplied ?? 0}`);
+  }
+
+  parts.push(`fallbackUsed=${params.fallbackUsed}`);
+
+  console.debug(parts.join(' '));
 }

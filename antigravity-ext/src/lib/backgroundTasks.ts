@@ -6,29 +6,120 @@ import { applyQuoteSnapshots } from './price';
 import { saveMarketContext } from './marketContext';
 import { fetchMarketSnapshot, extractContextFromSnapshot } from './snapshotFetcher';
 import { snapshotToQuoteSnapshots, isSnapshotStale } from './snapshotAdapter';
+import { loadFetchStatus, saveFetchStatus } from './fetchStatusStore';
+import { logFetchAudit } from './freshnessAudit';
+import type { FetchErrorKind } from '../types/fetchStatus';
+
+// ─── エラー分類 ───────────────────────────────────────────────────────────────
+
+function classifyFetchError(err: unknown): FetchErrorKind {
+  if (!(err instanceof Error)) return 'network';
+  if (err.name === 'AbortError' || err.message.toLowerCase().includes('timeout')) return 'timeout';
+  if (err.message.toLowerCase().includes('json') || err.message.toLowerCase().includes('parse')) return 'invalid_payload';
+  if (err.message.toLowerCase().includes('adapter')) return 'adapter_error';
+  return 'network';
+}
+
+function toSafeMessage(err: unknown): string {
+  if (err instanceof Error) return err.message.slice(0, 200);
+  return String(err).slice(0, 200);
+}
+
+// ─── applySnapshot ────────────────────────────────────────────────────────────
 
 /**
  * スナップショットを取得して AppState に反映する。
- * - 株価: snapshotAdapter → QuoteSnapshot[] → applyQuoteSnapshots()
- * - 市況: extractContextFromSnapshot → saveMarketContext()
- * 失敗しても例外を投げない（手動更新にフォールバック）
+ * 失敗しても既存の quote は上書きせず fetchStatus だけ更新する。
  */
 async function applySnapshot(): Promise<void> {
-  const snapshot = await fetchMarketSnapshot();
-  if (!snapshot) return;
+  const now = new Date().toISOString();
+  const prevStatus = loadFetchStatus();
+
+  // ── 取得試行 ──
+  let snapshot;
+  try {
+    snapshot = await fetchMarketSnapshot();
+  } catch (err) {
+    // fetchMarketSnapshot は内部で catch → null を返す設計だが念のため
+    const errorKind = classifyFetchError(err);
+    saveFetchStatus({
+      status: 'failed',
+      lastAttemptAt: now,
+      lastErrorAt: now,
+      lastSuccessAt: prevStatus.lastSuccessAt,
+      errorKind,
+      errorMessage: toSafeMessage(err),
+      fallbackUsed: true,
+    });
+    logFetchAudit({ status: 'failed', errorKind, fallbackUsed: true, lastSuccessAt: prevStatus.lastSuccessAt });
+    return;
+  }
+
+  // fetchMarketSnapshot は失敗時 null を返す
+  if (!snapshot) {
+    saveFetchStatus({
+      status: 'failed',
+      lastAttemptAt: now,
+      lastErrorAt: now,
+      lastSuccessAt: prevStatus.lastSuccessAt,
+      errorKind: 'network',
+      errorMessage: 'fetchMarketSnapshot returned null',
+      fallbackUsed: true,
+    });
+    logFetchAudit({ status: 'failed', errorKind: 'network', fallbackUsed: true, lastSuccessAt: prevStatus.lastSuccessAt });
+    return;
+  }
 
   if (isSnapshotStale(snapshot)) {
     console.warn('[snapshot] server returned stale snapshot — applying anyway');
   }
 
-  // 株価を QuoteSnapshot 形式で反映
-  const quotes = snapshotToQuoteSnapshots(snapshot, new Date());
-  if (quotes.length > 0) {
-    await applyQuoteSnapshots(quotes);
-    console.log(`[snapshot] applied ${quotes.length} quote(s) from ${snapshot.fetchedAt}`);
+  // ── adapter 変換 ──
+  let quotes;
+  try {
+    quotes = snapshotToQuoteSnapshots(snapshot, new Date());
+  } catch (err) {
+    saveFetchStatus({
+      status: 'failed',
+      lastAttemptAt: now,
+      lastErrorAt: now,
+      lastSuccessAt: prevStatus.lastSuccessAt,
+      errorKind: 'adapter_error',
+      errorMessage: toSafeMessage(err),
+      fallbackUsed: true,
+    });
+    logFetchAudit({ status: 'failed', errorKind: 'adapter_error', fallbackUsed: true, lastSuccessAt: prevStatus.lastSuccessAt });
+    return;
   }
 
-  // 市況コンテキストを反映
+  // ── 空スナップショット ──
+  if (quotes.length === 0) {
+    saveFetchStatus({
+      status: 'failed',
+      lastAttemptAt: now,
+      lastErrorAt: now,
+      lastSuccessAt: prevStatus.lastSuccessAt,
+      errorKind: 'empty_snapshot',
+      errorMessage: 'no valid quotes in snapshot',
+      fallbackUsed: true,
+    });
+    logFetchAudit({ status: 'failed', errorKind: 'empty_snapshot', fallbackUsed: true, lastSuccessAt: prevStatus.lastSuccessAt });
+    return;
+  }
+
+  // ── 成功: price 更新 ──
+  await applyQuoteSnapshots(quotes);
+  console.log(`[snapshot] applied ${quotes.length} quote(s) from ${snapshot.fetchedAt}`);
+
+  saveFetchStatus({
+    status: 'success',
+    lastAttemptAt: now,
+    lastSuccessAt: now,
+    fallbackUsed: false,
+  });
+  logFetchAudit({ status: 'success', quotesApplied: quotes.length, fallbackUsed: false });
+
+  // ── 市況コンテキスト ──
   const ctx = extractContextFromSnapshot(snapshot);
   if (ctx.usdJpyDeltaPct !== undefined || ctx.usIndexDeltaPct !== undefined) {
     await saveMarketContext(ctx);
@@ -106,4 +197,3 @@ export function stopBackgroundTasks() {
     taskInterval = null;
   }
 }
-

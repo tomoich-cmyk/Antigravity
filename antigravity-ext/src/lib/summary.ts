@@ -2,6 +2,7 @@ import { loadState, saveState } from './storage';
 import type { Asset, SummaryNotification, TriggerRule, AssetPriceState, MarketContext } from '../types';
 import { calculateEntryScore } from './entryScore';
 import { generateSummaryText, type CandidateBlockReason } from './summaryText';
+import { loadFetchStatus } from './fetchStatusStore';
 import { deriveBaselineDate } from './baselineDate';
 import type { QuoteKind, AssetClass, QuoteSnapshot } from '../types/market';
 
@@ -103,6 +104,7 @@ export async function generateSummary(
   const state = await loadState();
   const context = state.marketContext;
   const now = new Date();
+  const fetchStatus = loadFetchStatus();
 
   const subjectMap = {
     midday: '前場サマリ',
@@ -132,7 +134,7 @@ export async function generateSummary(
     else if (lines.length === 0) candidateBlockReason = 'score_below_threshold';
 
     // 価格サマリーセクション
-    const priceSection = generateSummaryText({ quotes: allQuotes, now: now.toISOString() });
+    const priceSection = generateSummaryText({ quotes: allQuotes, now: now.toISOString(), fetchStatus });
 
     // 候補セクション
     let candidateSection = '';
@@ -163,7 +165,7 @@ export async function generateSummary(
     // 投信のみの価格サマリー
     const fundQuotes = allQuotes.filter((_, i) => state.assets[i].type === 'fund');
     if (fundQuotes.length > 0) {
-      const fundPriceSection = generateSummaryText({ quotes: fundQuotes, now: now.toISOString() });
+      const fundPriceSection = generateSummaryText({ quotes: fundQuotes, now: now.toISOString(), fetchStatus });
       nightParts.push(`【投信 価格】\n${fundPriceSection}`);
     }
 
