@@ -71,6 +71,16 @@
 
 ## よくある原因と対処
 
+### 「更新: 不明」と表示される
+
+**これは正常。** `syncedAt`（サーバーからの取得時刻）が記録されていない状態。
+
+- サーバーに一度も接続していない、または localStorage にまだ `syncedAt` が保存されていない
+- 価格値が存在すれば表示はされる。鮮度判定は `baselineDate` / `marketDataAt` で行う
+- サーバーに接続して取得が成功すると `syncedAt` が更新され「不明」が解消される
+
+---
+
 ### 「現在値が出ない」
 
 **確認順:**
@@ -193,4 +203,4 @@ localStorage.removeItem('antigravity_fetch_status')
 | `fetchFallback.test.ts` | 取得失敗縮退 (13 件) |
 | `notificationSmoke.test.ts` | E2E スモーク 5 シナリオ (31 件) |
 
-合計: **161 件**
+合計: **162 件**
