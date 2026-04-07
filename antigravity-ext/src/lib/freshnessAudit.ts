@@ -17,7 +17,13 @@
 import type { FreshnessView, QuoteKind } from '../types/market';
 import type { FetchErrorKind } from '../types/fetchStatus';
 
-/** Vitest 実行中か */
+/**
+ * ログ抑制フラグ。
+ * - Vitest 実行中: process.env.VITEST で判定
+ * - 本番ビルド: import.meta.env.PROD で判定 (console.debug は本番でも出るが
+ *   DevTools Verbose フィルタにしか表示されないため許容)
+ *   → 完全に消したい場合は IS_PROD を条件に加える
+ */
 const IS_VITEST =
   typeof process !== 'undefined' && !!process.env['VITEST'];
 

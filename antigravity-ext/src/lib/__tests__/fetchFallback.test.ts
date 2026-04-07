@@ -91,6 +91,14 @@ describe('buildFetchStatusText', () => {
     expect(buildFetchStatusText(fs)).toBe('');
   });
 
+  it('idle (未試行) → 空文字を返す (状態行なし)', () => {
+    const fs: SnapshotFetchState = {
+      status: 'idle',
+      fallbackUsed: false,
+    };
+    expect(buildFetchStatusText(fs)).toBe('');
+  });
+
 });
 
 // ─── generateSummaryText + fetchStatus ────────────────────────────────────────

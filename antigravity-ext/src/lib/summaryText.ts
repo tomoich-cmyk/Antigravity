@@ -96,10 +96,13 @@ export function buildCandidateReasonText(reason: CandidateBlockReason): string {
  *   "市場データを取得できませんでした（初回取得前）。"
  */
 export function buildFetchStatusText(fetchStatus: SnapshotFetchState): string {
-  if (fetchStatus.status !== 'failed') return '';
+  // 成功 or 未試行 (idle) → 状態行なし
+  if (fetchStatus.status === 'success' || fetchStatus.status === 'idle') return '';
+  // 失敗: 前回成功値なし = 初回取得前
   if (!fetchStatus.lastSuccessAt) {
     return '市場データを取得できませんでした（初回取得前）。';
   }
+  // 失敗: 前回成功値あり = fallback 表示中
   return '市場データの更新に失敗したため、前回取得分を表示しています。';
 }
 
