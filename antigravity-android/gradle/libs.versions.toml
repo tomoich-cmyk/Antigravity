@@ -10,6 +10,8 @@ okhttp           = "4.12.0"
 serialization    = "1.7.1"
 androidx-core    = "1.13.1"
 activity         = "1.9.2"
+compose-bom      = "2024.09.00"
+lifecycle-vm     = "2.8.7"
 
 junit5           = "5.10.2"
 kotest           = "5.9.0"
@@ -42,6 +44,18 @@ serialization-json        = { module = "org.jetbrains.kotlinx:kotlinx-serializat
 # AndroidX UI
 androidx-core-ktx         = { module = "androidx.core:core-ktx",                                        version.ref = "androidx-core" }
 activity-ktx              = { module = "androidx.activity:activity-ktx",                                version.ref = "activity" }
+activity-compose          = { module = "androidx.activity:activity-compose",                            version.ref = "activity" }
+
+# Compose (BOM 管理)
+compose-bom               = { group = "androidx.compose",     name = "compose-bom",          version.ref = "compose-bom" }
+compose-ui                = { group = "androidx.compose.ui",  name = "ui" }
+compose-material3         = { group = "androidx.compose.material3", name = "material3" }
+compose-ui-preview        = { group = "androidx.compose.ui",  name = "ui-tooling-preview" }
+compose-ui-tooling        = { group = "androidx.compose.ui",  name = "ui-tooling" }
+
+# Lifecycle / ViewModel
+lifecycle-viewmodel-ktx     = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx",     version.ref = "lifecycle-vm" }
+lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle-vm" }
 
 # Test — core-engine (JUnit5)
 junit5-api                = { module = "org.junit.jupiter:junit-jupiter-api",                          version.ref = "junit5" }
@@ -62,3 +76,4 @@ kotlin-serialization      = { id = "org.jetbrains.kotlin.plugin.serialization", 
 android-library           = { id = "com.android.library",                                              version.ref = "agp" }
 android-application       = { id = "com.android.application",                                          version.ref = "agp" }
 ksp                       = { id = "com.google.devtools.ksp",                                          version.ref = "ksp" }
+kotlin-compose            = { id = "org.jetbrains.kotlin.plugin.compose",                              version.ref = "kotlin" }

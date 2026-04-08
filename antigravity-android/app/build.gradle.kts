@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -21,6 +22,8 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
 
+    buildFeatures { compose = true }
+
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
@@ -37,6 +40,17 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.androidx.core.ktx)
     implementation(libs.activity.ktx)
+    implementation(libs.activity.compose)
+    implementation(libs.lifecycle.viewmodel.ktx)
+    implementation(libs.lifecycle.viewmodel.compose)
+
+    // Compose
+    val composeBom = platform(libs.compose.bom)
+    implementation(composeBom)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.ui.preview)
+    debugImplementation(libs.compose.ui.tooling)
 
     // Test
     testImplementation(libs.room.runtime)

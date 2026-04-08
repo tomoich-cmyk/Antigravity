@@ -5,28 +5,42 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.antigravity.app.ui.theme.AntigravityTheme
 
 /**
- * メイン Activity — Phase 3-A は通知権限取得のみ。
+ * メイン Activity。
  *
- * Phase 3-B でここに Compose setContent を追加する。
- *
- * 権限フロー (Android 13+):
- *   1. POST_NOTIFICATIONS が未承認 → システムダイアログを表示
- *   2. 承認 / 拒否どちらでも Worker は動く（拒否時は通知が出ないだけ）
- *   API 26-32 は権限不要のためスキップ。
+ * Phase 3-A: POST_NOTIFICATIONS 権限リクエスト
+ * Phase 3-B: Compose Home ダッシュボード
  */
 class MainActivity : ComponentActivity() {
 
+    private val viewModel: HomeViewModel by viewModels {
+        HomeViewModel.factory(this)
+    }
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* 承認 / 拒否はどちらでも受け入れる — 通知は「あれば便利」機能 */ }
+    ) { /* 承認 / 拒否どちらでも受け入れる — 通知は「あれば便利」機能 */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestNotificationPermissionIfNeeded()
-        // Phase 3-B: setContent { AntigravityHomeScreen() }
+
+        setContent {
+            AntigravityTheme {
+                val uiState by viewModel.uiState.collectAsState()
+                HomeScreen(
+                    uiState   = uiState,
+                    onRefresh = { viewModel.requestRefresh(this) },
+                )
+            }
+        }
     }
 
     private fun requestNotificationPermissionIfNeeded() {
