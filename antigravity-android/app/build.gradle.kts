@@ -35,6 +35,8 @@ dependencies {
     implementation(libs.coroutines.android)
     implementation(libs.workmanager)
     implementation(libs.okhttp)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.activity.ktx)
 
     // Test
     testImplementation(libs.room.runtime)

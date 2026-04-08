@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Antigravity</string>
+
+    <!-- 通知チャンネル -->
+    <string name="notification_channel_summary_name">市場サマリー</string>
+    <string name="notification_channel_summary_desc">定期的な市場価格の要約を通知します</string>
+    <string name="notification_channel_status_name">同期状態</string>
+    <string name="notification_channel_status_desc">同期エラーなどの状態変化を通知します</string>
+
+    <!-- 通知タイトル -->
+    <string name="notification_summary_title">市場サマリー</string>
+    <string name="notification_status_title">同期エラー</string>
+</resources>

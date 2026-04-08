@@ -3,6 +3,7 @@ package com.antigravity.app.worker
 import android.content.Context
 import androidx.work.*
 import com.antigravity.app.AntigravityApp
+import com.antigravity.app.notification.SummaryNotificationBuilder
 import com.antigravity.contract.SnapshotFetchErrorKind
 import com.antigravity.contract.SnapshotFetchState
 import com.antigravity.data.db.SummaryCacheEntity
@@ -81,6 +82,10 @@ open class MarketSyncWorker(
             repo.saveFetchStatus(failedStatus)
             // ← saveQuoteSnapshots は呼ばない（縮退ルール: price state 書き換えゼロ）
 
+            // ─── 状態通知: fallback 中であることをユーザーに伝える ───────────
+            val statusText = SummaryTextBuilder.buildFetchStatusText(failedStatus)
+            SummaryNotificationBuilder.postStatusNotification(applicationContext, statusText)
+
             // キャッシュがあれば summary を再生成して保存（通知テキスト更新のため）
             if (hasCache) {
                 regenerateSummary(failedStatus, now)
@@ -158,6 +163,10 @@ open class MarketSyncWorker(
                 sessionType = session.name,
             )
         )
+
+        // ─── 要約通知を更新、状態通知（前回 failure があれば）をクリア ─────
+        SummaryNotificationBuilder.postSummaryNotification(applicationContext, summaryText)
+        SummaryNotificationBuilder.cancelStatusNotification(applicationContext)
 
         return Result.success()
     }

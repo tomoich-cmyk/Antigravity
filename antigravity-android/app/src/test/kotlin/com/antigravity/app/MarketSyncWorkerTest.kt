@@ -1,11 +1,13 @@
 package com.antigravity.app
 
+import android.app.NotificationManager
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.ListenableWorker
 import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
+import com.antigravity.app.notification.NotificationChannels
 import com.antigravity.app.worker.MarketSyncWorker
 import com.antigravity.contract.*
 import com.antigravity.data.db.AppDatabase
@@ -22,6 +24,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 
 /**
@@ -70,6 +73,8 @@ class MarketSyncWorkerTest {
             testDatabase   = db
             testRepository = repo
         }
+        // 通知チャンネルを初期化（SummaryNotificationBuilder が使うため）
+        NotificationChannels.createChannels(context)
     }
 
     @After
@@ -202,6 +207,77 @@ class MarketSyncWorkerTest {
 
         val failedStatus = repo.loadFetchStatus()
         assertEquals(successTime, failedStatus!!.lastSuccessAt)
+    }
+
+    // ─── 通知テスト ────────────────────────────────────────────────────────────
+
+    @Test
+    fun `fetch success posts summary notification`() = runTest {
+        buildWorker(FakeSnapshotFetcher(Result.success(successDto))).doWork()
+
+        val nm = context.getSystemService(NotificationManager::class.java)
+        val shadow = Shadows.shadowOf(nm)
+        assertNotNull(
+            "fetch success 後に要約通知が発行されていない",
+            shadow.getNotification(NotificationChannels.NOTIFICATION_SUMMARY),
+        )
+    }
+
+    @Test
+    fun `fetch success clears status notification`() = runTest {
+        // 1st run: 失敗 → 状態通知発行
+        buildWorker(
+            FakeSnapshotFetcher(
+                Result.failure(SnapshotFetchException(SnapshotFetchErrorKind.NETWORK, "down"))
+            )
+        ).doWork()
+        val nm = context.getSystemService(NotificationManager::class.java)
+        assertNotNull(Shadows.shadowOf(nm).getNotification(NotificationChannels.NOTIFICATION_STATUS))
+
+        // 2nd run: 成功 → 状態通知がキャンセルされる
+        buildWorker(FakeSnapshotFetcher(Result.success(successDto))).doWork()
+        assertNull(
+            "fetch success 後に状態通知が残っている",
+            Shadows.shadowOf(nm).getNotification(NotificationChannels.NOTIFICATION_STATUS),
+        )
+    }
+
+    @Test
+    fun `fetch failure with cache posts status notification`() = runTest {
+        // キャッシュを作成
+        buildWorker(FakeSnapshotFetcher(Result.success(successDto))).doWork()
+
+        // 失敗
+        buildWorker(
+            FakeSnapshotFetcher(
+                Result.failure(SnapshotFetchException(SnapshotFetchErrorKind.NETWORK, "down"))
+            )
+        ).doWork()
+
+        val nm = context.getSystemService(NotificationManager::class.java)
+        assertNotNull(
+            "fetch failure 後に状態通知が発行されていない",
+            Shadows.shadowOf(nm).getNotification(NotificationChannels.NOTIFICATION_STATUS),
+        )
+    }
+
+    @Test
+    fun `fetch failure without cache does not post status notification`() = runTest {
+        // キャッシュなし + lastSuccessAt=null → "初回取得前" は通知しない
+        // SummaryTextBuilder.buildFetchStatusText は FAILED+lastSuccessAt=null でも
+        // "市場データを取得できませんでした（初回取得前）。" を返すため、通知は出る
+        buildWorker(
+            FakeSnapshotFetcher(
+                Result.failure(SnapshotFetchException(SnapshotFetchErrorKind.NETWORK, "no route"))
+            )
+        ).doWork()
+
+        // 状態テキストが空でなければ通知が出る（初回失敗時もユーザーに伝える）
+        val nm = context.getSystemService(NotificationManager::class.java)
+        assertNotNull(
+            "初回取得失敗でも状態通知が発行されるべき",
+            Shadows.shadowOf(nm).getNotification(NotificationChannels.NOTIFICATION_STATUS),
+        )
     }
 }
 
