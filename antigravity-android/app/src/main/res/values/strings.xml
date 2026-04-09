@@ -11,4 +11,7 @@
     <!-- 通知タイトル -->
     <string name="notification_summary_title">市場サマリー</string>
     <string name="notification_status_title">同期エラー</string>
+
+    <!-- ウィジェット -->
+    <string name="widget_description">Antigravity 市場ウィジェット</string>
 </resources>

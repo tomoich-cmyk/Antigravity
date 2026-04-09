@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  appwidget-provider メタデータ — Phase 3-C
+  small  : 2×1 相当 (minWidth=110dp)
+  medium : 4×1 相当 (maxResizeWidth=280dp)
+  更新は WorkManager 完了後に GlanceAppWidget.updateAll() で行うため
+  android:updatePeriodMillis="0" (システムによる定期呼び出しを無効化)
+-->
+<appwidget-provider
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="40dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:maxResizeWidth="280dp"
+    android:maxResizeHeight="110dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_description" />

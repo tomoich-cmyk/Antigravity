@@ -43,6 +43,7 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.viewmodel.ktx)
     implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.glance.appwidget)
 
     // Compose
     val composeBom = platform(libs.compose.bom)

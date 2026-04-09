@@ -12,6 +12,7 @@ androidx-core    = "1.13.1"
 activity         = "1.9.2"
 compose-bom      = "2024.09.00"
 lifecycle-vm     = "2.8.7"
+glance           = "1.1.0"
 
 junit5           = "5.10.2"
 kotest           = "5.9.0"
@@ -56,6 +57,9 @@ compose-ui-tooling        = { group = "androidx.compose.ui",  name = "ui-tooling
 # Lifecycle / ViewModel
 lifecycle-viewmodel-ktx     = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx",     version.ref = "lifecycle-vm" }
 lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle-vm" }
+
+# Glance (App Widget)
+glance-appwidget            = { module = "androidx.glance:glance-appwidget",               version.ref = "glance" }
 
 # Test — core-engine (JUnit5)
 junit5-api                = { module = "org.junit.jupiter:junit-jupiter-api",                          version.ref = "junit5" }

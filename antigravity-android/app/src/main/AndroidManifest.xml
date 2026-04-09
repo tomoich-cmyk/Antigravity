@@ -32,6 +32,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Glance AppWidget — Phase 3-C -->
+        <receiver
+            android:name=".widget.AntigravityWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info" />
+        </receiver>
+
         <!-- WorkManager の初期化は AntigravityApp で行うため自動初期化を無効化 -->
         <provider
             android:name="androidx.startup.InitializationProvider"

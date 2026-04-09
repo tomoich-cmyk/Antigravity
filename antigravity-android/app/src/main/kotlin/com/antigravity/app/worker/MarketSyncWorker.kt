@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.work.*
 import com.antigravity.app.AntigravityApp
 import com.antigravity.app.notification.SummaryNotificationBuilder
+import com.antigravity.app.widget.AntigravityWidget
+import androidx.glance.appwidget.updateAll
 import com.antigravity.contract.SnapshotFetchErrorKind
 import com.antigravity.contract.SnapshotFetchState
 import com.antigravity.data.db.SummaryCacheEntity
@@ -87,8 +89,10 @@ open class MarketSyncWorker(
             SummaryNotificationBuilder.postStatusNotification(applicationContext, statusText)
 
             // キャッシュがあれば summary を再生成して保存（通知テキスト更新のため）
+            // ウィジェットも fallback 状態で再描画する
             if (hasCache) {
                 regenerateSummary(failedStatus, now)
+                AntigravityWidget().updateAll(applicationContext)
             }
 
             // リトライ可否: NETWORK / TIMEOUT はリトライ、それ以外は諦める
@@ -167,6 +171,9 @@ open class MarketSyncWorker(
         // ─── 要約通知を更新、状態通知（前回 failure があれば）をクリア ─────
         SummaryNotificationBuilder.postSummaryNotification(applicationContext, summaryText)
         SummaryNotificationBuilder.cancelStatusNotification(applicationContext)
+
+        // ─── ウィジェットを同期完了データで更新 ─────────────────────────────
+        AntigravityWidget().updateAll(applicationContext)
 
         return Result.success()
     }
