@@ -16,6 +16,8 @@ data class HomeUiState(
     val fetchStatus: SnapshotFetchState? = null,
     val lastSyncAt: String? = null,
     val isLoading: Boolean = true,
+    /** Pull-to-Refresh インジケーター用。初期ロード(isLoading)とは独立して管理する。 */
+    val isRefreshing: Boolean = false,
 ) {
     val isEmpty: Boolean
         get() = !isLoading && quoteRows.isEmpty()

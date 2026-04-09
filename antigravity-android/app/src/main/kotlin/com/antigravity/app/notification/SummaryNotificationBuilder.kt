@@ -1,32 +1,30 @@
 package com.antigravity.app.notification
 
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.antigravity.app.R
+import com.antigravity.app.ui.MainActivity
+import com.antigravity.app.worker.SyncNowReceiver
 
 /**
  * 要約 / 状態通知のビルドと発行。
  *
- * 設計方針:
- *   - NOTIFICATION_SUMMARY : Worker 完了ごとに同じ ID で上書き。
- *     setOnlyAlertOnce=true により、初回のみ音が鳴る（それ以降はサイレント更新）。
- *   - NOTIFICATION_STATUS  : fetch 失敗時のみ発行、成功復帰時に cancel。
- *     fallback 継続中であることをユーザーに明示する。
+ * Phase 4 追加 — 通知アクション:
+ *   - 「開く」: MainActivity を起動 (FLAG_SINGLE_TOP)
+ *   - 「今すぐ同期」: SyncNowReceiver 経由で MarketSyncWorker.runOnce() 発火
  *
- * 権限チェック:
- *   areNotificationsEnabled() が false の場合はサイレントに何もしない。
- *   Android 13+ の POST_NOTIFICATIONS 未承認状態でも安全。
+ * 設計:
+ *   - NOTIFICATION_SUMMARY : Worker 完了ごとに同じ ID で上書き。
+ *     setOnlyAlertOnce=true → 初回のみ音、以降サイレント更新。
+ *   - NOTIFICATION_STATUS  : fetch 失敗時のみ発行、成功復帰時に cancel。
  */
 object SummaryNotificationBuilder {
 
     // ─── 要約通知 ─────────────────────────────────────────────────────────────
 
-    /**
-     * 最新の summary_cache テキストを要約通知として発行する。
-     *
-     * @param summaryText summary_cache.summaryText
-     */
     fun postSummaryNotification(context: Context, summaryText: String) {
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
 
@@ -36,9 +34,11 @@ object SummaryNotificationBuilder {
             .setContentTitle(context.getString(R.string.notification_summary_title))
             .setContentText(firstLine)
             .setStyle(NotificationCompat.BigTextStyle().bigText(summaryText))
-            .setOnlyAlertOnce(true)   // 初回のみ音、以降サイレント更新
-            .setAutoCancel(false)     // タップしても消えない
+            .setOnlyAlertOnce(true)
+            .setAutoCancel(false)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(buildOpenIntent(context))
+            .addAction(0, context.getString(R.string.notification_action_sync_now), buildSyncNowIntent(context))
             .build()
 
         @Suppress("MissingPermission")
@@ -48,12 +48,6 @@ object SummaryNotificationBuilder {
 
     // ─── 状態通知 ─────────────────────────────────────────────────────────────
 
-    /**
-     * fetch failure / fallback 状態通知を発行する。
-     * fetch 成功時は cancelStatusNotification() で消す。
-     *
-     * @param statusText SummaryTextBuilder.buildFetchStatusText() の出力
-     */
     fun postStatusNotification(context: Context, statusText: String) {
         if (statusText.isBlank()) return
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
@@ -65,6 +59,8 @@ object SummaryNotificationBuilder {
             .setOnlyAlertOnce(true)
             .setAutoCancel(false)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(buildOpenIntent(context))
+            .addAction(0, context.getString(R.string.notification_action_sync_now), buildSyncNowIntent(context))
             .build()
 
         @Suppress("MissingPermission")
@@ -72,12 +68,28 @@ object SummaryNotificationBuilder {
             .notify(NotificationChannels.NOTIFICATION_STATUS, notification)
     }
 
-    /**
-     * 状態通知を非表示にする。
-     * fetch 成功復帰後に呼ぶことで fallback 警告をクリアする。
-     */
     fun cancelStatusNotification(context: Context) {
         NotificationManagerCompat.from(context)
             .cancel(NotificationChannels.NOTIFICATION_STATUS)
     }
+
+    // ─── PendingIntent helpers ─────────────────────────────────────────────────
+
+    private fun buildOpenIntent(context: Context): PendingIntent =
+        PendingIntent.getActivity(
+            context,
+            0,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+    private fun buildSyncNowIntent(context: Context): PendingIntent =
+        PendingIntent.getBroadcast(
+            context,
+            0,
+            Intent(context, SyncNowReceiver::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
 }

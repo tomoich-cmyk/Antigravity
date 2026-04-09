@@ -178,4 +178,47 @@ class HomeViewModelTest {
 
         assertEquals(2, vm.uiState.value.quoteRows.size)
     }
+
+    // ─── Phase 4: refreshNow / snackbarMessage ────────────────────────────────
+
+    @Test
+    fun `refreshNow after SUCCESS sets snackbarMessage to 同期完了`() = runTest {
+        repo.saveQuoteSnapshots(listOf(gmopgQuote))
+        repo.saveFetchStatus(SnapshotFetchState(
+            status = SnapshotFetchState.FetchStatus.SUCCESS,
+            lastSuccessAt = "2024-04-08T10:30:00+09:00",
+        ))
+        val vm = HomeViewModel(repo)
+        vm.refreshNow()
+
+        assertEquals("同期完了", vm.snackbarMessage.value)
+        assertFalse(vm.uiState.value.isRefreshing)
+    }
+
+    @Test
+    fun `refreshNow after FAILED sets snackbarMessage to 同期失敗`() = runTest {
+        repo.saveFetchStatus(SnapshotFetchState(
+            status       = SnapshotFetchState.FetchStatus.FAILED,
+            errorKind    = SnapshotFetchErrorKind.NETWORK,
+            fallbackUsed = false,
+        ))
+        val vm = HomeViewModel(repo)
+        vm.refreshNow()
+
+        assertEquals("同期失敗", vm.snackbarMessage.value)
+    }
+
+    @Test
+    fun `clearSnackbar nullifies snackbarMessage`() = runTest {
+        repo.saveFetchStatus(SnapshotFetchState(
+            status = SnapshotFetchState.FetchStatus.SUCCESS,
+            lastSuccessAt = "2024-04-08T10:30:00+09:00",
+        ))
+        val vm = HomeViewModel(repo)
+        vm.refreshNow()
+        assertNotNull(vm.snackbarMessage.value)
+
+        vm.clearSnackbar()
+        assertNull(vm.snackbarMessage.value)
+    }
 }

@@ -32,6 +32,11 @@
             </intent-filter>
         </activity>
 
+        <!-- 通知アクション「今すぐ同期」— Phase 4-3 -->
+        <receiver
+            android:name=".worker.SyncNowReceiver"
+            android:exported="false" />
+
         <!-- Glance AppWidget — Phase 3-C -->
         <receiver
             android:name=".widget.AntigravityWidgetReceiver"

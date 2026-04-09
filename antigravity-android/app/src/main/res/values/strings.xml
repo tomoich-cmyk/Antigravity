@@ -14,4 +14,8 @@
 
     <!-- ウィジェット -->
     <string name="widget_description">Antigravity 市場ウィジェット</string>
+
+    <!-- 通知アクション -->
+    <string name="notification_action_open">開く</string>
+    <string name="notification_action_sync_now">今すぐ同期</string>
 </resources>

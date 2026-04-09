@@ -20,12 +20,10 @@ import java.time.ZonedDateTime
 /**
  * Home 画面の ViewModel。
  *
- * Room から quotes / fetchStatus を読み込み、HomeUiState を構築して emit する。
- * FreshnessEvaluator の評価は ViewModel 層で行う（UI は評価結果だけを受け取る）。
- *
- * 縮退ルール連携:
- *   - isFallback / isFailure の状態は fetchStatus.fallbackUsed / status から取得
- *   - price の鮮度評価は「表示時刻」ベースで行う
+ * Phase 4 追加:
+ *   - isRefreshing: Pull-to-Refresh インジケーター制御
+ *   - snackbarMessage: 手動更新完了後の Snackbar メッセージ (one-shot)
+ *   - refreshNow(): PTR / 手動更新専用 suspend 関数 (テスト可能)
  */
 class HomeViewModel(
     private val repo: MarketRepository,
@@ -34,35 +32,33 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    init {
-        load()
-    }
+    /** 手動更新完了後の Snackbar メッセージ。UI 表示後に clearSnackbar() で null に戻す。 */
+    private val _snackbarMessage = MutableStateFlow<String?>(null)
+    val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
+
+    init { load() }
 
     // ─── public API ───────────────────────────────────────────────────────────
 
-    /** DB を再読み込みして uiState を更新する。Worker 完了後にも呼べる。 */
-    fun load() {
-        viewModelScope.launch { loadNow() }
-    }
+    fun load() { viewModelScope.launch { loadNow() } }
 
     /**
      * 手動更新: WorkManager に one-time Worker をエンキューして即時同期を要求する。
-     * Worker 完了後に再度 load() を呼ぶには、WorkInfo の observe が必要（Phase 3-C）。
+     * PTR インジケーターを表示し、DB 再読み後に Snackbar メッセージを emit する。
      */
     fun requestRefresh(context: Context) {
         MarketSyncWorker.runOnce(context)
-        // 楽観的に isLoading を立てる
-        _uiState.value = _uiState.value.copy(isLoading = true)
-        load()
+        viewModelScope.launch { refreshNow() }
     }
+
+    /** Snackbar 表示後に呼ぶ。二重表示防止のためクリアする。 */
+    fun clearSnackbar() { _snackbarMessage.value = null }
 
     // ─── internal suspend API (テストから直接呼ぶ) ────────────────────────────
 
     /**
      * DB を読み込んで _uiState を更新する suspend 関数。
-     *
-     * テストでは viewModelScope を介さず直接呼ぶことで、
-     * Robolectric の Main ディスパッチャー制御問題を回避する。
+     * viewModelScope を介さず直接呼ぶことで Robolectric 制御問題を回避する。
      */
     internal suspend fun loadNow() {
         val now         = ZonedDateTime.now(MarketClock.JST)
@@ -82,11 +78,22 @@ class HomeViewModel(
         }
 
         _uiState.value = HomeUiState(
-            quoteRows   = rows,
-            fetchStatus = fetchStatus,
-            lastSyncAt  = fetchStatus?.lastSuccessAt,
-            isLoading   = false,
+            quoteRows    = rows,
+            fetchStatus  = fetchStatus,
+            lastSyncAt   = fetchStatus?.lastSuccessAt,
+            isLoading    = false,
+            isRefreshing = false,   // ロード完了で PTR インジケーターを消す
         )
+    }
+
+    /**
+     * Pull-to-Refresh / 手動更新用。
+     * isRefreshing を立て→ loadNow() → 完了後に Snackbar を emit する。
+     */
+    internal suspend fun refreshNow() {
+        _uiState.value = _uiState.value.copy(isRefreshing = true)
+        loadNow()   // 完了時に isRefreshing = false を内部でセット
+        _snackbarMessage.value = if (_uiState.value.isFailure) "同期失敗" else "同期完了"
     }
 
     // ─── factory ──────────────────────────────────────────────────────────────
@@ -105,7 +112,7 @@ class HomeViewModel(
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 /** assetId を画面表示名に変換する。 */
-private fun String.toDisplayName(): String = when (this) {
+internal fun String.toDisplayName(): String = when (this) {
     "asset-gmopg" -> "GMO-PG"
     "asset-unext" -> "U-NEXT"
     else          -> removePrefix("asset-").uppercase()
