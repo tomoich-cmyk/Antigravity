@@ -5,3 +5,8 @@ local.properties
 .idea/
 *.iml
 .DS_Store
+
+# 本番署名 — 絶対にリポジトリに入れない
+keystore.properties
+*.jks
+*.keystore

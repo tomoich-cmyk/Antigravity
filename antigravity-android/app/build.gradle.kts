@@ -1,7 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+}
+
+// 本番署名設定を keystore.properties から読み込む (ファイルがなければ debug 署名にフォールバック)
+val keystorePropsFile = rootProject.file("keystore.properties")
+val keystoreProps = Properties().also { props ->
+    if (keystorePropsFile.exists()) props.load(keystorePropsFile.inputStream())
 }
 
 android {
@@ -17,9 +25,18 @@ android {
     }
 
     signingConfigs {
-        // debug キーストアはデフォルトのまま (内部配布用 release でも流用)
+        // debug キーストアはデフォルトのまま
         getByName("debug") {
             // Android デフォルト ~/.android/debug.keystore
+        }
+        // 本番署名: keystore.properties が存在する場合のみ有効
+        if (keystorePropsFile.exists()) {
+            create("release") {
+                storeFile   = file(keystoreProps["storeFile"] as String)
+                storePassword = keystoreProps["storePassword"] as String
+                keyAlias    = keystoreProps["keyAlias"] as String
+                keyPassword = keystoreProps["keyPassword"] as String
+            }
         }
     }
 
@@ -36,8 +53,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // 内部配布用: debug 署名を流用 (本番リリース時は release signingConfig に差し替える)
-            signingConfig = signingConfigs.getByName("debug")
+            // keystore.properties があれば本番署名、なければ debug 署名 (内部配布用)
+            signingConfig = if (keystorePropsFile.exists())
+                signingConfigs.getByName("release")
+            else
+                signingConfigs.getByName("debug")
         }
     }
 
