@@ -40,6 +40,10 @@ class AntigravityApp : Application(), Configuration.Provider {
     // Configuration.Provider の実装（手動初期化）
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
-            .setMinimumLoggingLevel(android.util.Log.INFO)
+            // release ビルドでは WARN 以上のみ、debug は INFO 以上
+            .setMinimumLoggingLevel(
+                if (BuildConfig.DEBUG) android.util.Log.INFO
+                else                   android.util.Log.WARN
+            )
             .build()
 }

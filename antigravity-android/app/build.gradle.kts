@@ -13,7 +13,32 @@ android {
         minSdk        = 26
         targetSdk     = 35
         versionCode   = 1
-        versionName   = "1.0"
+        versionName   = "1.0.0"
+    }
+
+    signingConfigs {
+        // debug キーストアはデフォルトのまま (内部配布用 release でも流用)
+        getByName("debug") {
+            // Android デフォルト ~/.android/debug.keystore
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix   = "-debug"
+            isDebuggable        = true
+        }
+        getByName("release") {
+            isMinifyEnabled    = true
+            isShrinkResources  = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            // 内部配布用: debug 署名を流用 (本番リリース時は release signingConfig に差し替える)
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
 
     compileOptions {
@@ -22,7 +47,10 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose      = true
+        buildConfig  = true
+    }
 
     testOptions {
         unitTests.isIncludeAndroidResources = true

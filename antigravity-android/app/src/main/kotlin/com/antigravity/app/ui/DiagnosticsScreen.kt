@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import com.antigravity.app.BuildConfig
 import com.antigravity.app.ui.theme.AntigravityTheme
 import com.antigravity.contract.FreshnessLevel
 
@@ -59,6 +60,9 @@ fun DiagnosticsScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                // ─── アプリバージョンカード ─────────────────────────────────────
+                AppVersionCard()
+
                 // ─── 同期状態カード ─────────────────────────────────────────────
                 SyncStatusCard(uiState)
 
@@ -73,6 +77,25 @@ fun DiagnosticsScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
             }
+        }
+    }
+}
+
+// ─── AppVersionCard ───────────────────────────────────────────────────────────
+
+@Composable
+private fun AppVersionCard() {
+    Card(
+        modifier  = Modifier.fillMaxWidth(),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("アプリ情報", style = MaterialTheme.typography.titleSmall)
+            HorizontalDivider()
+            DiagRow("バージョン", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", mono = true)
+            DiagRow("ビルド種別", if (BuildConfig.DEBUG) "DEBUG" else "RELEASE")
+            DiagRow("applicationId", BuildConfig.APPLICATION_ID, mono = true)
         }
     }
 }
