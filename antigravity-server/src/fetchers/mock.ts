@@ -16,25 +16,35 @@ export class MockFetcher implements IMarketFetcher {
     return {
       fetchedAt: new Date().toISOString(),
       stocks: {
+        // 東証上場株 — 4/10 終値ベースの参考値 (priceKind: 'close')
         gmopg: {
           price: 8171,
           changePct: 1.2,
           source: 'mock',
+          priceKind: 'close',
+          baselineDate: new Date().toISOString().slice(0, 10),
         },
         unext: {
           price: 1649,
           changePct: -0.5,
           source: 'mock',
+          priceKind: 'close',
+          baselineDate: new Date().toISOString().slice(0, 10),
         },
+        // 投資信託 — 基準価額 (priceKind: 'official')
         ab: {
-          price: 9934,
+          price: 9780,
           changePct: 0.8,
           source: 'mock',
+          priceKind: 'official',
+          baselineDate: new Date().toISOString().slice(0, 10),
         },
         invesco: {
-          price: 8382,
+          price: 8194,
           changePct: 1.2,
           source: 'mock',
+          priceKind: 'official',
+          baselineDate: new Date().toISOString().slice(0, 10),
         },
       },
       context: {
