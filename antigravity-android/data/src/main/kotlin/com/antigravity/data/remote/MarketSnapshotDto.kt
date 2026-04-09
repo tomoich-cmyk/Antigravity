@@ -24,8 +24,10 @@ data class MarketSnapshotDto(
 
 @Serializable
 data class StocksDto(
-    val gmopg: StockQuoteDto? = null,
-    val unext: StockQuoteDto? = null,
+    val gmopg:   StockQuoteDto? = null,
+    val unext:   StockQuoteDto? = null,
+    val ab:      StockQuoteDto? = null,
+    val invesco: StockQuoteDto? = null,
 )
 
 @Serializable

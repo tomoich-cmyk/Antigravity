@@ -113,7 +113,9 @@ class HomeViewModel(
 
 /** assetId を画面表示名に変換する。 */
 internal fun String.toDisplayName(): String = when (this) {
-    "asset-gmopg" -> "GMO-PG"
-    "asset-unext" -> "U-NEXT"
-    else          -> removePrefix("asset-").uppercase()
+    "asset-gmopg"   -> "GMO-PG"
+    "asset-unext"   -> "U-NEXT"
+    "asset-ab"      -> "AB"
+    "asset-invesco" -> "インベスコ"
+    else            -> removePrefix("asset-").uppercase()
 }

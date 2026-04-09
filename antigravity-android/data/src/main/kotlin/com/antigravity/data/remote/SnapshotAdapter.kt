@@ -6,8 +6,9 @@ import com.antigravity.contract.*
  * MarketSnapshotDto → List<QuoteSnapshot> 変換 — Web 側 snapshotAdapter.ts の Kotlin 移植。
  *
  * マッピング規則:
- *   assetId    : "gmopg" → "asset-gmopg",  "unext" → "asset-unext"
- *   assetClass : JP_STOCK (両銘柄とも東証上場株)
+ *   assetId    : "gmopg" → "asset-gmopg", "unext" → "asset-unext"
+ *               "ab"    → "asset-ab",     "invesco" → "asset-invesco"
+ *   assetClass : JP_STOCK (上場株) / MUTUAL_FUND (投資信託: ab, invesco)
  *   quoteKind  : priceKind="close"    → CLOSE
  *                priceKind="official" → NAV
  *                priceKind="market"/null → INTRADAY
@@ -16,15 +17,21 @@ import com.antigravity.contract.*
  */
 object SnapshotAdapter {
 
-    private val ASSET_KEY_MAP = mapOf(
-        "gmopg" to "asset-gmopg",
-        "unext" to "asset-unext",
+    private data class AssetMeta(val assetId: String, val assetClass: AssetClass)
+
+    private val ASSET_META_MAP = mapOf(
+        "gmopg"   to AssetMeta("asset-gmopg",   AssetClass.JP_STOCK),
+        "unext"   to AssetMeta("asset-unext",   AssetClass.JP_STOCK),
+        "ab"      to AssetMeta("asset-ab",      AssetClass.MUTUAL_FUND),
+        "invesco" to AssetMeta("asset-invesco", AssetClass.MUTUAL_FUND),
     )
 
     fun adapt(dto: MarketSnapshotDto): List<QuoteSnapshot> {
         val result = mutableListOf<QuoteSnapshot>()
-        dto.stocks.gmopg?.let { result += adaptStock("gmopg", it, dto.fetchedAt) }
-        dto.stocks.unext?.let { result += adaptStock("unext", it, dto.fetchedAt) }
+        dto.stocks.gmopg?.let   { result += adaptStock("gmopg",   it, dto.fetchedAt) }
+        dto.stocks.unext?.let   { result += adaptStock("unext",   it, dto.fetchedAt) }
+        dto.stocks.ab?.let      { result += adaptStock("ab",      it, dto.fetchedAt) }
+        dto.stocks.invesco?.let { result += adaptStock("invesco", it, dto.fetchedAt) }
         return result
     }
 
@@ -33,7 +40,8 @@ object SnapshotAdapter {
         quote: StockQuoteDto,
         fetchedAt: String,
     ): QuoteSnapshot {
-        val assetId = ASSET_KEY_MAP[key] ?: "asset-$key"
+        val meta       = ASSET_META_MAP[key] ?: AssetMeta("asset-$key", AssetClass.JP_STOCK)
+        val assetClass = meta.assetClass
 
         val quoteKind = when (quote.priceKind) {
             "close"    -> QuoteKind.CLOSE
@@ -49,8 +57,8 @@ object SnapshotAdapter {
         val syncedAt = quote.syncedAt?.takeIf { it.isNotBlank() } ?: fetchedAt
 
         return QuoteSnapshot(
-            assetId      = assetId,
-            assetClass   = AssetClass.JP_STOCK,
+            assetId      = meta.assetId,
+            assetClass   = assetClass,
             value        = quote.price,
             currency     = "JPY",
             quoteKind    = quoteKind,
