@@ -12,6 +12,14 @@ val keystoreProps = Properties().also { props ->
     if (keystorePropsFile.exists()) props.load(keystorePropsFile.inputStream())
 }
 
+// API ベース URL を local.properties から読み込む
+// 設定例 (local.properties): api.base.url=http://192.168.1.5:3001
+// 未設定の場合はエミュレーター向け 10.0.2.2 にフォールバック
+val localProps = Properties().also { props ->
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { props.load(it) }
+}
+val apiBaseUrl: String = localProps.getProperty("api.base.url", "http://10.0.2.2:3001")
+
 android {
     namespace  = "com.antigravity.app"
     compileSdk = 35
@@ -22,6 +30,9 @@ android {
         targetSdk     = 35
         versionCode   = 1
         versionName   = "1.0.0"
+
+        // API サーバーの向き先 (local.properties の api.base.url で上書き可)
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
     signingConfigs {

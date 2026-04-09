@@ -3,6 +3,7 @@ package com.antigravity.app.worker
 import android.content.Context
 import androidx.work.*
 import com.antigravity.app.AntigravityApp
+import com.antigravity.app.BuildConfig
 import com.antigravity.app.notification.SummaryNotificationBuilder
 import com.antigravity.app.widget.AntigravityWidget
 import androidx.glance.appwidget.updateAll
@@ -52,7 +53,7 @@ open class MarketSyncWorker(
     }
 
     private val fetcher: SnapshotFetcher by lazy {
-        fetcherOverride ?: SnapshotFetcher()
+        fetcherOverride ?: SnapshotFetcher(baseUrl = BuildConfig.API_BASE_URL)
     }
 
     override suspend fun doWork(): Result {
