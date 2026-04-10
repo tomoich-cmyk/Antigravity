@@ -260,9 +260,27 @@ export class JQuantsFetcher implements IMarketFetcher {
       console.warn(`[jquants] partial response — errors: [${Object.keys(errors).join(', ')}]`);
     }
 
+    // --- 投資信託 (AB / インベスコ) — 市場 API 対象外のため mock 値を使用 ---
+    // 実際の基準価額は運用会社サイト or 手動更新が必要
+    const today = new Date().toISOString().slice(0, 10);
+    const ab: StockQuote = {
+      price:       9780,
+      source:      'mock:fund',
+      priceKind:   'official',
+      baselineDate: today,
+      syncedAt:    new Date().toISOString(),
+    };
+    const invesco: StockQuote = {
+      price:       8194,
+      source:      'mock:fund',
+      priceKind:   'official',
+      baselineDate: today,
+      syncedAt:    new Date().toISOString(),
+    };
+
     return {
       fetchedAt: new Date().toISOString(),
-      stocks: { gmopg, unext },
+      stocks: { gmopg, unext, ab, invesco },
       context: { usdJpy, usProxy, worldProxy },
       _meta: {
         fetcher: this.name,
