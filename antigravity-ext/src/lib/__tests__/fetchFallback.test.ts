@@ -23,7 +23,6 @@ import { generateSummaryText, buildFetchStatusText } from '../summaryText';
 import {
   scenarios,
   makeStock,
-  makeFund,
   TODAY,
   PREV_BIZ,
 } from './fixtures/marketScenarios';

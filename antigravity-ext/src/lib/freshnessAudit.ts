@@ -19,13 +19,12 @@ import type { FetchErrorKind } from '../types/fetchStatus';
 
 /**
  * ログ抑制フラグ。
- * - Vitest 実行中: process.env.VITEST で判定
+ * - Vitest 実行中: import.meta.env.VITEST で判定 (Vite/Vitest 共通)
  * - 本番ビルド: import.meta.env.PROD で判定 (console.debug は本番でも出るが
  *   DevTools Verbose フィルタにしか表示されないため許容)
  *   → 完全に消したい場合は IS_PROD を条件に加える
  */
-const IS_VITEST =
-  typeof process !== 'undefined' && !!process.env['VITEST'];
+const IS_VITEST = !!import.meta.env['VITEST'];
 
 /**
  * 鮮度判定結果を 1 行の debug ログとして出力する。

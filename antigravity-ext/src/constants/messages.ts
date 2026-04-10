@@ -15,6 +15,10 @@ export const MESSAGES = {
   diffToSell: (diff: number) => `売まであと${diff.toLocaleString()}円`,
   diffToBuy: (diff: number) => `買まであと${diff.toLocaleString()}円`,
 
+  // 閾値を超過している場合 (price >= sell threshold / price <= buy threshold)
+  diffSellExceeded: (diff: number) => `売ライン超過 +${diff.toLocaleString()}円`,
+  diffBuyExceeded: (diff: number) => `買ライン超過 -${diff.toLocaleString()}円`,
+
   diffGeneric: (diff: number) => `あと${diff.toLocaleString()}円`,
 
   stockBatchSuccess: (mode: string, count: number) => 

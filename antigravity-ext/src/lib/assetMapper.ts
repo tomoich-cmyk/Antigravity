@@ -84,13 +84,32 @@ export function toAssetCardViewModel(
 
   const style = styleMap[decisionKey] || styleMap['hold'];
 
-  // 5. 差（あと○円）の計算
+  // 5. 差（あと○円 / 超過○円）の計算
+  // sell: displayPrice >= threshold → 超過 (ライン到達済み)
+  // sell: displayPrice <  threshold → 未達 (あと○円)
+  // buy:  displayPrice <= threshold → 超過 (ライン到達済み)
+  // buy:  displayPrice >  threshold → 未達 (あと○円)
   let diffText = "";
   let diffColor = "text-slate-100";
   if (primaryRule) {
     const diff = Math.abs(primaryRule.thresholdValue - displayPrice);
-    diffText = primaryRule.direction === 'sell' ? MESSAGES.diffToSell(diff) : MESSAGES.diffToBuy(diff);
-    diffColor = primaryRule.direction === 'sell' ? "text-rose-400" : "text-indigo-400";
+    if (primaryRule.direction === 'sell') {
+      if (displayPrice >= primaryRule.thresholdValue) {
+        diffText  = MESSAGES.diffSellExceeded(diff);
+        diffColor = "text-rose-300";   // 超過: やや明るめで強調
+      } else {
+        diffText  = MESSAGES.diffToSell(diff);
+        diffColor = "text-rose-400";
+      }
+    } else {
+      if (displayPrice <= primaryRule.thresholdValue) {
+        diffText  = MESSAGES.diffBuyExceeded(diff);
+        diffColor = "text-indigo-300"; // 超過: やや明るめで強調
+      } else {
+        diffText  = MESSAGES.diffToBuy(diff);
+        diffColor = "text-indigo-400";
+      }
+    }
   }
 
   // 6. 鮮度判定 (FreshnessEngine)

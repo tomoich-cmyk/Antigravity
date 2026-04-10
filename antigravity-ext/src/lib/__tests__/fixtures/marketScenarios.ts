@@ -24,7 +24,7 @@
  */
 
 import type { QuoteSnapshot } from '../../../types/market';
-import type { CandidateBlockReason } from '../summaryText';
+import type { CandidateBlockReason } from '../../summaryText';
 
 // ─── 基準日定数 ───────────────────────────────────────────────────────────────
 

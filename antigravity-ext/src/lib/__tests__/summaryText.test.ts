@@ -14,7 +14,6 @@ import {
   scenarios,
   makeStock,
   makeFund,
-  TODAY,
   PREV_BIZ,
 } from './fixtures/marketScenarios';
 
