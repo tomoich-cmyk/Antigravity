@@ -70,6 +70,7 @@ object SnapshotAdapter {
             syncedAt     = syncedAt,
             marketDataAt = quote.marketDataAt,
             baselineDate = baselineDate,
+            changePct    = quote.changePct,
         )
     }
 

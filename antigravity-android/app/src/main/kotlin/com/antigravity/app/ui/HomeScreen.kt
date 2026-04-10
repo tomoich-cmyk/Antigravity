@@ -77,6 +77,12 @@ fun HomeScreen(
                 StatusBar(uiState = uiState)
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // ─── サマリーカード ─────────────────────────────────────────────
+                uiState.summaryText?.let { text ->
+                    SummaryCard(text = text)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 // ─── 価格カード一覧 ─────────────────────────────────────────────
                 when {
                     uiState.isLoading -> {
@@ -140,6 +146,31 @@ private fun StatusBar(uiState: HomeUiState) {
     }
 }
 
+// ─── SummaryCard ──────────────────────────────────────────────────────────────
+
+@Composable
+private fun SummaryCard(text: String) {
+    Card(
+        modifier  = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text(
+                text  = "サマリー",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text  = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
+    }
+}
+
 // ─── QuoteCard ────────────────────────────────────────────────────────────────
 
 @Composable
@@ -161,7 +192,21 @@ private fun QuoteCard(row: QuoteRowData, modifier: Modifier = Modifier) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 FreshnessDot(level = row.freshnessLevel)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = row.price, style = MaterialTheme.typography.titleLarge)
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(text = row.price, style = MaterialTheme.typography.titleLarge)
+                    row.changeText?.let { change ->
+                        val changeColor = when (row.changePositive) {
+                            true  -> Color(0xFF2E7D32)  // 上昇: 緑
+                            false -> MaterialTheme.colorScheme.error  // 下落: 赤
+                            null  -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                        Text(
+                            text  = change,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = changeColor,
+                        )
+                    }
+                }
             }
         }
     }

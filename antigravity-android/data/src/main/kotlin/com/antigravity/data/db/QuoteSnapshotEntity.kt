@@ -21,6 +21,8 @@ data class QuoteSnapshotEntity(
     val syncedAt: String,
     val marketDataAt: String?,
     val baselineDate: String,
+    /** 前日比 (%) — DB version 2 で追加。null = 不明 */
+    val changePct: Double? = null,
 )
 
 fun QuoteSnapshotEntity.toDomain() = QuoteSnapshot(
@@ -37,6 +39,7 @@ fun QuoteSnapshotEntity.toDomain() = QuoteSnapshot(
     syncedAt     = syncedAt,
     marketDataAt = marketDataAt,
     baselineDate = baselineDate,
+    changePct    = changePct,
 )
 
 fun QuoteSnapshot.toEntity() = QuoteSnapshotEntity(
@@ -51,4 +54,5 @@ fun QuoteSnapshot.toEntity() = QuoteSnapshotEntity(
     syncedAt     = syncedAt,
     marketDataAt = marketDataAt,
     baselineDate = baselineDate,
+    changePct    = changePct,
 )

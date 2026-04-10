@@ -19,6 +19,8 @@ data class QuoteSnapshot(
     val syncedAt: String,
     val marketDataAt: String?,
     val baselineDate: String,
+    /** 前日比 (%) — 取得できない場合は null */
+    val changePct: Double? = null,
 )
 
 data class QuoteSource(

@@ -18,6 +18,8 @@ data class HomeUiState(
     val isLoading: Boolean = true,
     /** Pull-to-Refresh インジケーター用。初期ロード(isLoading)とは独立して管理する。 */
     val isRefreshing: Boolean = false,
+    /** summary_cache の最新テキスト (通知・Widget と同じ内容) */
+    val summaryText: String? = null,
 ) {
     val isEmpty: Boolean
         get() = !isLoading && quoteRows.isEmpty()
@@ -43,4 +45,8 @@ data class QuoteRowData(
     val timeLabel: String,              // "現在値" or asOfLabel
     val freshnessLevel: FreshnessLevel,
     val canPretendCurrent: Boolean,
+    /** 前日比テキスト例: "+2.34%" / "-1.23%" / null=不明 */
+    val changeText: String? = null,
+    /** 前日比が正なら true、負なら false、不明なら null */
+    val changePositive: Boolean? = null,
 )

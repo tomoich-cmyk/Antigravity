@@ -64,6 +64,7 @@ class HomeViewModel(
         val now         = ZonedDateTime.now(MarketClock.JST)
         val quotes      = repo.loadLatestQuotes()
         val fetchStatus = repo.loadFetchStatus()
+        val summary     = repo.loadSummary()
 
         val rows = quotes.map { quote ->
             val fv = FreshnessEvaluator.evaluate(quote, now)
@@ -74,6 +75,8 @@ class HomeViewModel(
                 timeLabel         = if (fv.canPretendCurrent) fv.priceLabel else fv.asOfLabel,
                 freshnessLevel    = fv.level,
                 canPretendCurrent = fv.canPretendCurrent,
+                changeText        = quote.changePct?.formatChangePct(),
+                changePositive    = quote.changePct?.let { it >= 0.0 },
             )
         }
 
@@ -83,6 +86,7 @@ class HomeViewModel(
             lastSyncAt   = fetchStatus?.lastSuccessAt,
             isLoading    = false,
             isRefreshing = false,   // ロード完了で PTR インジケーターを消す
+            summaryText  = summary?.summaryText,
         )
     }
 
@@ -110,6 +114,12 @@ class HomeViewModel(
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
+
+/** 前日比 (Double) を表示文字列に変換する。例: 2.34 → "+2.34%", -1.23 → "-1.23%" */
+internal fun Double.formatChangePct(): String {
+    val sign = if (this >= 0.0) "+" else ""
+    return "$sign${"%.2f".format(this)}%"
+}
 
 /** assetId を画面表示名に変換する。 */
 internal fun String.toDisplayName(): String = when (this) {
