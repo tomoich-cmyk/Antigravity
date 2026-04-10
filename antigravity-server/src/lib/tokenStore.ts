@@ -1,9 +1,16 @@
 /**
  * J-Quants token lifecycle management.
  *
- * Auth flow:
+ * Auth flow (2パターン):
+ *
+ * [A] メール+パスワード認証 (通常アカウント)
  *   1. POST /v1/token/auth_user  (email + password) → refreshToken (valid ~1 week)
  *   2. POST /v1/token/auth_refresh (refreshToken)   → idToken     (valid 24h)
+ *
+ * [B] refreshToken 直接指定 (Google アカウント等、パスワード不使用)
+ *   JQUANTS_REFRESH_TOKEN を .env に設定すると step 1 をスキップ。
+ *   refreshToken の期限が切れたら再設定が必要。
+ *   取得方法: J-Quants ダッシュボード → API Keys → Refresh Token をコピー
  *
  * This module caches both tokens in memory and transparently handles refresh.
  * Only one auth flow runs at a time (guarded by a pending promise).
@@ -74,6 +81,15 @@ export function tokenStatus(): {
 // ---------------------------------------------------------------------------
 
 async function _acquireToken(): Promise<string> {
+  // [B] JQUANTS_REFRESH_TOKEN が環境変数に直接設定されている場合はそれを使う (Google OAuth 対応)
+  if (!_state.refreshToken) {
+    const envRefreshToken = process.env.JQUANTS_REFRESH_TOKEN;
+    if (envRefreshToken) {
+      _state.refreshToken = envRefreshToken;
+      console.log('[jquants:token] using JQUANTS_REFRESH_TOKEN from environment');
+    }
+  }
+
   // Try refreshing with an existing refreshToken first
   if (_state.refreshToken) {
     try {
@@ -87,7 +103,7 @@ async function _acquireToken(): Promise<string> {
       _state.idToken = null;
     }
   }
-  // Full authentication
+  // [A] Full authentication (email + password)
   return await _authenticate();
 }
 
