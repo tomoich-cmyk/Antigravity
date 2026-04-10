@@ -43,6 +43,13 @@ let _pendingAuth: Promise<string> | null = null;
 export async function getIdToken(): Promise<string> {
   if (_pendingAuth) return _pendingAuth;
 
+  // [C] JQUANTS_API_KEY が設定されている場合はそのまま Bearer トークンとして使用
+  // (J-Quants ダッシュボード → API Keys で発行した API Key)
+  const apiKey = process.env.JQUANTS_API_KEY;
+  if (apiKey) {
+    return apiKey;
+  }
+
   // Fast path: cached idToken still valid
   if (_state.idToken && Date.now() < _state.idTokenExpiresAt - ID_TOKEN_BUFFER_MS) {
     return _state.idToken;

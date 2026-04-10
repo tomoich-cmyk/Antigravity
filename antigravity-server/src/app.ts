@@ -19,18 +19,28 @@ import { startScheduler } from './lib/scheduler.js';
 // Fetcher の選択
 // ---------------------------------------------------------------------------
 // FETCHER=mock    → MockFetcher  (デフォルト、安全)
-// FETCHER=jquants → JQuantsFetcher（JQUANTS_EMAIL / JQUANTS_PASSWORD 必須）
-//                   認証情報が未設定の場合は Mock にフォールバック
+// FETCHER=jquants → JQuantsFetcher
+//   認証方法 A: JQUANTS_EMAIL + JQUANTS_PASSWORD (通常アカウント)
+//   認証方法 B: JQUANTS_REFRESH_TOKEN (Google アカウント等、パスワード不使用)
+//   どちらも未設定の場合は Mock にフォールバック
 // ---------------------------------------------------------------------------
 
 function buildFetcher(): IMarketFetcher {
   const mode = process.env.FETCHER ?? 'mock';
 
   if (mode === 'jquants') {
-    if (!process.env.JQUANTS_EMAIL || !process.env.JQUANTS_PASSWORD) {
+    const hasCredentials =
+      (process.env.JQUANTS_EMAIL && process.env.JQUANTS_PASSWORD) ||
+      process.env.JQUANTS_REFRESH_TOKEN ||
+      process.env.JQUANTS_API_KEY;
+
+    if (!hasCredentials) {
       console.warn(
-        '[antigravity-server] FETCHER=jquants が指定されましたが、' +
-        'JQUANTS_EMAIL / JQUANTS_PASSWORD が未設定です。Mock にフォールバックします。'
+        '[antigravity-server] FETCHER=jquants が指定されましたが、認証情報が未設定です。\n' +
+        '  方法A: JQUANTS_EMAIL + JQUANTS_PASSWORD\n' +
+        '  方法B: JQUANTS_REFRESH_TOKEN (Google アカウント)\n' +
+        '  方法C: JQUANTS_API_KEY (ダッシュボードの API Keys ページ)\n' +
+        'Mock にフォールバックします。'
       );
       return new MockFetcher();
     }
