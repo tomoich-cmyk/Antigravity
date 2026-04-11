@@ -7,6 +7,7 @@ import com.antigravity.app.BuildConfig
 import com.antigravity.app.notification.SummaryNotificationBuilder
 import com.antigravity.app.widget.AntigravityWidget
 import androidx.glance.appwidget.updateAll
+import com.antigravity.contract.MarketSession
 import com.antigravity.contract.SnapshotFetchErrorKind
 import com.antigravity.contract.SnapshotFetchState
 import com.antigravity.data.db.SummaryCacheEntity
@@ -59,6 +60,18 @@ open class MarketSyncWorker(
     override suspend fun doWork(): Result {
         val now = ZonedDateTime.now(MarketClock.JST)
         val nowStr = now.toString()
+
+        // ─── 0. 場中チェック ──────────────────────────────────────────────────
+        // 定期同期 (force=false) は MORNING / AFTERNOON のみ実行。
+        // 手動更新・起動時 (force=true) はセッションに関わらず実行。
+        val force = inputData.getBoolean(KEY_FORCE, false)
+        if (!force) {
+            val session = MarketClock.getSession(now)
+            if (!isActiveSession(session)) {
+                // 場外 → 何もせず正常終了（WorkManager リトライなし）
+                return Result.success()
+            }
+        }
 
         // ─── 1. Fetch ─────────────────────────────────────────────────────────
         val fetchResult = fetcher.fetch()
@@ -179,6 +192,16 @@ open class MarketSyncWorker(
         return Result.success()
     }
 
+    // ─── ヘルパー ─────────────────────────────────────────────────────────────
+
+    /**
+     * 定期同期を実行すべきセッションかどうかを返す。
+     * 前場 (MORNING) と後場 (AFTERNOON) のみ true。
+     * 昼休み・場前・場後・祝日はスキップ。
+     */
+    private fun isActiveSession(session: MarketSession): Boolean =
+        session == MarketSession.MORNING || session == MarketSession.AFTERNOON
+
     /** fetch 失敗時にキャッシュ済み quotes でサマリーを再生成する。 */
     private suspend fun regenerateSummary(
         failedStatus: SnapshotFetchState,
@@ -206,8 +229,15 @@ open class MarketSyncWorker(
         const val WORK_NAME_ONE_SHOT = "MarketSyncWorker_oneShot"
 
         /**
+         * 場中チェックをスキップするフラグ。
+         * true = 手動更新・起動時。false (デフォルト) = 定期同期。
+         */
+        const val KEY_FORCE = "force"
+
+        /**
          * 15 分間隔の定期同期をスケジュール。
          * 既に登録済みの場合は KEEP（多重登録防止）。
+         * doWork() 内で場中チェックを行うため、場外では即 success 終了する。
          */
         fun schedulePeriodicSync(context: Context) {
             val request = PeriodicWorkRequestBuilder<MarketSyncWorker>(
@@ -230,10 +260,12 @@ open class MarketSyncWorker(
 
         /**
          * 即時 one-time 同期（起動時・手動更新用）。
+         * KEY_FORCE=true により場中チェックをスキップして必ず取得する。
          * ネットワーク制約なし（ユーザーが明示的に要求した場合は即実行）。
          */
         fun runOnce(context: Context) {
             val request = OneTimeWorkRequestBuilder<MarketSyncWorker>()
+                .setInputData(workDataOf(KEY_FORCE to true))
                 .build()
 
             WorkManager.getInstance(context).enqueueUniqueWork(
