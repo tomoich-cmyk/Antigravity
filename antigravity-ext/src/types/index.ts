@@ -1,25 +1,51 @@
 export type AssetType = 'stock' | 'fund';
 
+export type CostBasisMode = 'broker_snapshot' | 'reconstructed' | 'manual';
+
 export interface Asset {
   id: string;
   name: string;
   type: AssetType;
   unitLabel: string;
+  notes: string;
+  symbol?: string; // Ticker code for API mapping (e.g. 3769)
+  
+  // Real-time / Live Price Info
   currentPrice: number;
-  averageCost: number;
+  lastPriceUpdatedAt?: number | null;
+  priceSource?: 'manual' | 'batch' | 'derived' | 'api' | 'auto'; // auto for legacy
+
+  // Reconstructed / Calculated Holding Info (System Internal)
   quantity: number;
+  averageCost: number;
   marketValue: number;
   unrealizedPnL: number;
   realizedPnL: number;
-  notes: string;
-  symbol?: string; // Ticker code for API mapping (e.g. 3769)
-  lastPriceUpdatedAt?: number | null;
-  priceSource?: 'manual' | 'batch' | 'derived' | 'api' | 'auto'; // auto for legacy
-  maxBufferPct?: number; // 動的判断帯の最大幅 (1.0% = 0.01)
-  watchZoneEnabled?: boolean; // 動的判断帯を利用するか
-  marketScoreEnabled?: boolean; // 市況補正を利用するか
+  
+  // Snapshot-based fields (Broker Reported)
+  current_quantity?: number;
+  current_avg_cost?: number;
+  current_price?: number;
+  current_valuation?: number;
+  current_unrealized_pnl?: number;
+  last_synced_at?: number;
+  cost_basis_mode?: CostBasisMode;
+
+  // WCM-oriented metrics (Reconstructed Performance)
+  total_contributed_capital?: number;
+  total_cash_returned?: number;
+  net_invested_capital?: number;
+  total_return_value?: number;
+  total_return_rate?: number;
+
+  // Legacy / Tax Specific
   taxCostBasis?: number; // 税務上の平均取得 (特別分配金での減額対象)
   individualPrincipal?: number; // 個別元本 (取得時の価格をベースに特別分配金で更新)
+  
+  // Strategy settings
+  maxBufferPct?: number; 
+  watchZoneEnabled?: boolean; 
+  marketScoreEnabled?: boolean; 
 }
 
 export type ThresholdType = 'lte' | 'gte' | 'range';
@@ -38,7 +64,16 @@ export interface TriggerRule {
   cooldownUntil: number | null;
 }
 
-export type TransactionType = 'buy' | 'sell' | 'distribution' | 'adjustment';
+export type TransactionType = 
+  | 'buy' 
+  | 'sell' 
+  | 'ordinary_distribution' 
+  | 'special_distribution' 
+  | 'transfer_in' 
+  | 'transfer_out' 
+  | 'manual_adjustment'
+  | 'distribution' // legacy support
+  | 'adjustment';  // legacy support
 export type TransactionStatus = 'planned' | 'confirmed';
 
 export interface DistributionBreakdown {
@@ -189,6 +224,29 @@ export interface PriceSnapshot {
   timestamp: number;
 }
 
+// ─── 再配分ルール ─────────────────────────────────────────────────────────────
+
+/** 売却後の資金をどう再配分するかのルール */
+export interface AllocationSlice {
+  assetId: string;   // 'cash' | 'asset-wcm' | 'asset-invesco' など
+  label: string;     // 表示名
+  pct: number;       // 割合 0〜100
+}
+
+export interface AllocationSchedule {
+  label: string;     // 'receivingWeek' | 'nextWeek' | 'weekAfter'
+  pct: number;       // その週に投入する割合
+}
+
+export interface AllocationRule {
+  id: string;
+  source: string;                    // 'ab_sell' | 'stock_sell' | 'annual_investment'
+  label: string;                     // 表示名
+  slices: AllocationSlice[];         // 資産配分
+  schedule?: AllocationSchedule[];   // 投入スケジュール（任意）
+  monthlyAmount?: number;            // 年間追加投資用
+}
+
 export interface AppState {
   version?: number; // schemaVersion, e.g. 2
   assets: Asset[];
@@ -202,4 +260,5 @@ export interface AppState {
   useReferencePriceForTrigger?: boolean; // 新機能：投信参考価格をトリガー判定に用いるかの全体設定
   lastEvaluatedAt?: number;
   notificationHistory?: NotificationRecord[];
+  allocationRules?: AllocationRule[];  // 売却後再配分ルール
 }
