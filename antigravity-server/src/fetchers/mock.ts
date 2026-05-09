@@ -31,21 +31,10 @@ export class MockFetcher implements IMarketFetcher {
           priceKind: 'close',
           baselineDate: new Date().toISOString().slice(0, 10),
         },
-        // 投資信託 — 基準価額 (priceKind: 'official')
-        ab: {
-          price: 9780,
-          changePct: 0.8,
-          source: 'mock',
-          priceKind: 'official',
-          baselineDate: new Date().toISOString().slice(0, 10),
-        },
-        invesco: {
-          price: 8194,
-          changePct: 1.2,
-          source: 'mock',
-          priceKind: 'official',
-          baselineDate: new Date().toISOString().slice(0, 10),
-        },
+        // 投資信託 (AB / インベスコ / WCM) — 基準価額は API 非対応のため null
+        // クライアント側（Chrome拡張・Androidアプリ）の手動更新値を保護する
+        ab: null,
+        invesco: null,
       },
       context: {
         usdJpy: {

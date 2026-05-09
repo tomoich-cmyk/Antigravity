@@ -74,6 +74,15 @@ export function prepareSyncPreview(
     );
 
     if (targetAsset) {
+      // 投信の mock 価格（source が 'mock' または 'mock:fund'）は手動更新値を
+      // 上書きしないようスキップする。投信基準価額は API 非対応のため手動入力が正。
+      const isMockFund = targetAsset.type === 'fund' &&
+        (quote.source === 'mock' || quote.source === 'mock:fund');
+      if (isMockFund) {
+        result.skippedKeys.push(`${targetAsset.name}: 投信のため手動更新を優先`);
+        continue;
+      }
+
       if (isValidNum(quote.price)) {
         result.stagedAssetPrices[targetAsset.id] = quote.price;
         if (!result.stagedAssetDetails) result.stagedAssetDetails = {};

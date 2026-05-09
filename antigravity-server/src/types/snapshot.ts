@@ -14,8 +14,8 @@ export type MarketSnapshot = {
     gmopg?: StockQuote;
     /** U-NEXT (9418) */
     unext?: StockQuote;
-    /** その他の銘柄 (動的キー) */
-    [key: string]: StockQuote | undefined;
+    /** その他の銘柄 (動的キー)。null = データなし（手動更新を保護） */
+    [key: string]: StockQuote | null | undefined;
   };
 
   context: {
