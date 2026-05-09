@@ -1,5 +1,6 @@
 import type { IMarketFetcher } from './types.js';
 import type { MarketSnapshot } from '../types/snapshot.js';
+import { fetchAllFundNavs } from './fundNav.js';
 
 /**
  * MockFetcher — 固定値を返すモック実装 (Sprint 5-1)
@@ -11,12 +12,13 @@ export class MockFetcher implements IMarketFetcher {
   readonly name = 'mock';
 
   async fetch(): Promise<MarketSnapshot> {
-    // 実際の API 接続前の固定値モック
-    // Sprint 5-2 で JQuantsFetcher に差し替え
+    // 投信基準価額は Yahoo Finance Japan からスクレイピング
+    const fundNavs = await fetchAllFundNavs();
+
     return {
       fetchedAt: new Date().toISOString(),
       stocks: {
-        // 東証上場株 — 4/10 終値ベースの参考値 (priceKind: 'close')
+        // 東証上場株 — mock 固定値
         gmopg: {
           price: 8171,
           changePct: 1.2,
@@ -31,10 +33,10 @@ export class MockFetcher implements IMarketFetcher {
           priceKind: 'close',
           baselineDate: new Date().toISOString().slice(0, 10),
         },
-        // 投資信託 (AB / インベスコ / WCM) — 基準価額は API 非対応のため null
-        // クライアント側（Chrome拡張・Androidアプリ）の手動更新値を保護する
-        ab: null,
-        invesco: null,
+        // 投資信託 — Yahoo Finance Japan から取得
+        ab:      fundNavs['ab']      ?? null,
+        invesco: fundNavs['invesco'] ?? null,
+        wcm:     fundNavs['wcm']     ?? null,
       },
       context: {
         usdJpy: {

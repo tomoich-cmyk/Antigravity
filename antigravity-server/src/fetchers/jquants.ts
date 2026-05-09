@@ -20,6 +20,7 @@ import type { IMarketFetcher } from './types.js';
 import type { MarketSnapshot, StockQuote } from '../types/snapshot.js';
 import { getIdToken, invalidateTokens } from '../lib/tokenStore.js';
 import { fetchAllContext, fetchStockQuote } from './yahoo.js';
+import { fetchAllFundNavs } from './fundNav.js';
 
 const JQUANTS_BASE = 'https://api.jquants.com/v1';
 
@@ -260,12 +261,19 @@ export class JQuantsFetcher implements IMarketFetcher {
       console.warn(`[jquants] partial response — errors: [${Object.keys(errors).join(', ')}]`);
     }
 
-    // --- 投資信託 (AB / インベスコ / WCM) ---
-    // J-Quants / Yahoo Finance は投信基準価額を提供しない。
-    // null を返すことでクライアント側の手動更新値を保護する。
+    // --- 投資信託 (AB / インベスコ / WCM) — Yahoo Finance Japan からスクレイピング ---
+    const fundNavs = await fetchAllFundNavs();
+    console.log(`[jquants] fund NAVs: AB=${fundNavs['ab']?.price ?? 'n/a'} Inv=${fundNavs['invesco']?.price ?? 'n/a'} WCM=${fundNavs['wcm']?.price ?? 'n/a'}`);
+
     return {
       fetchedAt: new Date().toISOString(),
-      stocks: { gmopg, unext, ab: null, invesco: null },
+      stocks: {
+        gmopg,
+        unext,
+        ab:      fundNavs['ab']      ?? null,
+        invesco: fundNavs['invesco'] ?? null,
+        wcm:     fundNavs['wcm']     ?? null,
+      },
       context: { usdJpy, usProxy, worldProxy },
       _meta: {
         fetcher: this.name,

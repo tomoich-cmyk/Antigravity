@@ -59,10 +59,11 @@ export function prepareSyncPreview(
     
     // シンプルなシンボルマッピングテーブル (拡張可能)
     const symbolMap: Record<string, string> = {
-      'gmopg': '3769',
-      'unext': '9418',
-      'ab': 'AB',
-      'invesco': 'インベスコ'
+      'gmopg':   '3769',
+      'unext':   '9418',
+      'ab':      'AB',
+      'invesco': 'インベスコ',
+      'wcm':     'WCM',
     };
     
     const targetSymbol = symbolMap[key] || key;
@@ -74,12 +75,12 @@ export function prepareSyncPreview(
     );
 
     if (targetAsset) {
-      // 投信の mock 価格（source が 'mock' または 'mock:fund'）は手動更新値を
-      // 上書きしないようスキップする。投信基準価額は API 非対応のため手動入力が正。
+      // mock 固定値の投信価格は手動更新値を保護するためスキップ。
+      // yahoo:fund は Yahoo Finance Japan からの実取得値なので適用する。
       const isMockFund = targetAsset.type === 'fund' &&
         (quote.source === 'mock' || quote.source === 'mock:fund');
       if (isMockFund) {
-        result.skippedKeys.push(`${targetAsset.name}: 投信のため手動更新を優先`);
+        result.skippedKeys.push(`${targetAsset.name}: mock投信のためスキップ`);
         continue;
       }
 
