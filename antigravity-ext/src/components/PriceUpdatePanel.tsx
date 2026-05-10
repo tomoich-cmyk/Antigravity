@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Asset, MarketContext } from '../types';
-import { saveBatchPrices, saveOfficialFundPrice, saveReferenceFundPrice, saveApiPrice, saveMarketContextFromSnapshot, evaluateAndSaveTriggers } from '../lib/price';
+import { saveBatchPrices, saveOfficialFundPrice, saveReferenceFundPrice, saveApiPrice, saveMarketContextFromSnapshot, evaluateAndSaveTriggers, saveAssetCostBasis } from '../lib/price';
 import { getMarketContext, saveMarketContext, fetchRemoteMarketSnapshot } from '../lib/marketContext';
 import { prepareSyncPreview } from '../lib/sync';
 import { loadState } from '../lib/storage';
@@ -19,6 +19,8 @@ export const PriceUpdatePanel: React.FC<Props> = ({ assets }) => {
   const [stockPrices, setStockPrices] = useState<Record<string, string>>({});
   const [fundOfficial, setFundOfficial] = useState<Record<string, string>>({});
   const [fundReference, setFundReference] = useState<Record<string, string>>({});
+  const [costBasisInputs, setCostBasisInputs] = useState<Record<string, { averageCost: string; taxCostBasis: string; individualPrincipal: string }>>({});
+  const [expandedCostBasis, setExpandedCostBasis] = useState<Record<string, boolean>>({});
   
   const [marketCtx, setMarketCtx] = useState<Partial<MarketContext>>({});
   const [syncPreview, setSyncPreview] = useState<SyncResult | null>(null);
@@ -149,6 +151,38 @@ export const PriceUpdatePanel: React.FC<Props> = ({ assets }) => {
     }
   };
 
+  const getCostBasisInput = (assetId: string) =>
+    costBasisInputs[assetId] ?? { averageCost: '', taxCostBasis: '', individualPrincipal: '' };
+
+  const setCostBasisField = (assetId: string, field: 'averageCost' | 'taxCostBasis' | 'individualPrincipal', value: string) => {
+    setCostBasisInputs(prev => ({
+      ...prev,
+      [assetId]: { ...getCostBasisInput(assetId), [field]: value }
+    }));
+  };
+
+  const handleSaveCostBasis = async (assetId: string) => {
+    const inputs = getCostBasisInput(assetId);
+    const updates: { averageCost?: number; taxCostBasis?: number; individualPrincipal?: number } = {};
+    const ac = parseFloat(inputs.averageCost);
+    const tc = parseFloat(inputs.taxCostBasis);
+    const ip = parseFloat(inputs.individualPrincipal);
+    if (!isNaN(ac) && ac > 0) updates.averageCost = ac;
+    if (!isNaN(tc) && tc > 0) updates.taxCostBasis = tc;
+    if (!isNaN(ip) && ip > 0) updates.individualPrincipal = ip;
+    if (Object.keys(updates).length === 0) return;
+    setIsUpdating(true);
+    try {
+      await saveAssetCostBasis(assetId, updates);
+      setCostBasisInputs(prev => ({ ...prev, [assetId]: { averageCost: '', taxCostBasis: '', individualPrincipal: '' } }));
+      showToast('平均取得単価を保存しました');
+    } catch (err) {
+      showToast('保存に失敗しました');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <div className="bg-[var(--bg-card)] rounded-2xl shadow-xl border border-[var(--border-main)] overflow-hidden transition-all duration-300">
       <div className="flex border-b border-[var(--border-main)] text-[11px] font-black uppercase tracking-widest bg-[var(--bg-main)]">
@@ -209,12 +243,74 @@ export const PriceUpdatePanel: React.FC<Props> = ({ assets }) => {
                      </div>
                      <div className="flex items-center justify-between group">
                         <span className="text-[var(--text-muted)] font-bold uppercase text-[9px] tracking-widest flex items-center gap-1">
-                          {LABELS.asset.referencePrice} (試算) 
+                          {LABELS.asset.referencePrice} (試算)
                         </span>
                         <div className="flex gap-2 items-center">
                            <input type="number" step="any" className="w-20 px-2 py-1 bg-[var(--bg-card)] border border-[var(--border-main)] rounded-lg focus:ring-2 focus:ring-amber-500/50 focus:outline-none text-right font-mono font-bold" value={fundReference[asset.id] !== undefined ? fundReference[asset.id] : ''} onChange={e => setFundReference(p => ({...p, [asset.id]: e.target.value}))} />
                            <button onClick={() => handleUpdateFund(asset.id, 'reference')} disabled={!fundReference[asset.id] || isUpdating} className="px-2 py-1 bg-amber-600 text-white font-black rounded-lg disabled:opacity-30 hover:bg-amber-500 transition text-[9px] uppercase tracking-widest shadow-lg shadow-amber-600/20">{LABELS.actions.apply}</button>
                         </div>
+                     </div>
+
+                     {/* 平均取得単価 / 個別元本 編集 */}
+                     <div className="mt-1">
+                       <button
+                         className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--text-main)] transition"
+                         onClick={() => setExpandedCostBasis(prev => ({ ...prev, [asset.id]: !prev[asset.id] }))}
+                       >
+                         <span>{expandedCostBasis[asset.id] ? '▾' : '▸'}</span>
+                         <span>平均取得単価・個別元本</span>
+                         <span className="text-[8px] font-medium opacity-60 normal-case">(特別分配金調整)</span>
+                       </button>
+                       {expandedCostBasis[asset.id] && (
+                         <div className="mt-2 bg-amber-500/5 border border-amber-500/15 rounded-xl p-2.5 space-y-2">
+                           <div className="text-[8px] text-amber-600 dark:text-amber-400 font-bold opacity-80 mb-1">
+                             現在値 — 平均取得: {asset.averageCost.toLocaleString()}円
+                             {asset.taxCostBasis !== undefined && ` / 税務元本: ${asset.taxCostBasis.toLocaleString()}円`}
+                             {asset.individualPrincipal !== undefined && ` / 個別元本: ${asset.individualPrincipal.toLocaleString()}円`}
+                           </div>
+                           <div className="flex items-center justify-between">
+                             <span className="text-[var(--text-muted)] font-bold text-[9px] uppercase tracking-widest">平均取得単価</span>
+                             <input
+                               type="number" step="any"
+                               className="w-20 px-2 py-1 bg-[var(--bg-card)] border border-amber-500/30 rounded-lg focus:ring-2 focus:ring-amber-500/50 focus:outline-none text-right font-mono font-bold"
+                               placeholder={asset.averageCost.toLocaleString()}
+                               value={getCostBasisInput(asset.id).averageCost}
+                               onChange={e => setCostBasisField(asset.id, 'averageCost', e.target.value)}
+                             />
+                           </div>
+                           <div className="flex items-center justify-between">
+                             <span className="text-[var(--text-muted)] font-bold text-[9px] uppercase tracking-widest">税務上元本</span>
+                             <input
+                               type="number" step="any"
+                               className="w-20 px-2 py-1 bg-[var(--bg-card)] border border-amber-500/30 rounded-lg focus:ring-2 focus:ring-amber-500/50 focus:outline-none text-right font-mono font-bold"
+                               placeholder={(asset.taxCostBasis ?? asset.averageCost).toLocaleString()}
+                               value={getCostBasisInput(asset.id).taxCostBasis}
+                               onChange={e => setCostBasisField(asset.id, 'taxCostBasis', e.target.value)}
+                             />
+                           </div>
+                           <div className="flex items-center justify-between">
+                             <span className="text-[var(--text-muted)] font-bold text-[9px] uppercase tracking-widest">個別元本</span>
+                             <input
+                               type="number" step="any"
+                               className="w-20 px-2 py-1 bg-[var(--bg-card)] border border-amber-500/30 rounded-lg focus:ring-2 focus:ring-amber-500/50 focus:outline-none text-right font-mono font-bold"
+                               placeholder={(asset.individualPrincipal ?? asset.averageCost).toLocaleString()}
+                               value={getCostBasisInput(asset.id).individualPrincipal}
+                               onChange={e => setCostBasisField(asset.id, 'individualPrincipal', e.target.value)}
+                             />
+                           </div>
+                           <button
+                             onClick={() => handleSaveCostBasis(asset.id)}
+                             disabled={isUpdating || (
+                               !getCostBasisInput(asset.id).averageCost &&
+                               !getCostBasisInput(asset.id).taxCostBasis &&
+                               !getCostBasisInput(asset.id).individualPrincipal
+                             )}
+                             className="w-full py-1.5 bg-amber-600 text-white font-black rounded-lg disabled:opacity-30 hover:bg-amber-500 transition text-[9px] uppercase tracking-widest shadow-lg shadow-amber-600/20"
+                           >
+                             保存（損益再計算）
+                           </button>
+                         </div>
+                       )}
                      </div>
                   </div>
                 </div>
