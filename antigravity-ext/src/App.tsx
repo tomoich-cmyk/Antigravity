@@ -180,7 +180,11 @@ function App() {
       {/* Asset List & Actions */}
       <div className="p-2 flex-1 pb-2">
         <div className="mb-2">
-            <QuickActions onSelectAction={(assetId, type, quantity) => setQuickAction({ assetId, type, quantity })} />
+            <QuickActions
+              onSelectAction={(assetId, type, quantity) => setQuickAction({ assetId, type, quantity })}
+              transactions={state.transactions}
+              assets={state.assets}
+            />
         </div>
 
         <div className="grid grid-cols-2 gap-2 items-stretch">
